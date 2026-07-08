@@ -1,0 +1,8 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Packages-->
+  <ItemGroup>
+    <PackageReference Include="Defra.Livestock.Sdk.Api.Strategies.Abstractions" />
+  </ItemGroup>
+</Project>

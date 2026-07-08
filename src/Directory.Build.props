@@ -1,0 +1,24 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Default project information-->
+  <PropertyGroup>
+    <ProductName>$(RootNamespace)</ProductName>
+    <Title>$(ProductName)</Title>
+    <Description>$(ProductName)</Description>
+  </PropertyGroup>
+
+  <!-- Icon-->
+  <PropertyGroup>
+    <PackageIcon>defra-nuget-small.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)\..\assets\defra-nuget-small.png">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+      <Link>Assets\defra-nuget-small.png</Link>
+    </None>
+  </ItemGroup>
+</Project>
+

@@ -1,0 +1,52 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <RootNamespace>Defra.Livestock.Sdk.Api.$(MSBuildProjectName)</RootNamespace>
+    <AssemblyName>$(RootNamespace)</AssemblyName>
+    <Authors>Defra Livestock Information System</Authors>
+    <Copyright>Copyright (c) Defra. All rights reserved.</Copyright>
+    <PackageTags>lis-sdk lis-sdk-nuget lis-sdk-nuget-api</PackageTags>
+  </PropertyGroup>
+
+  <!-- Packability-->
+  <PropertyGroup>
+    <IsPackable>False</IsPackable>
+  </PropertyGroup>
+  
+  <!-- Supressions-->
+  <PropertyGroup>
+    <!-- Suppress NU1507: There are 2 package sources defined in your configuration. When using central package management, please map your package sources with package source mapping or specify a single package source. -->
+    <NoWarn>$(NoWarn);NU1507</NoWarn>
+  </PropertyGroup>
+
+  <!-- global packages-->
+  <ItemGroup>
+    <Using Include="Microsoft" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <!-- Code analysis packages and configuration-->
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json">
+      <Link>Properties\stylecop.json</Link>
+    </AdditionalFiles>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

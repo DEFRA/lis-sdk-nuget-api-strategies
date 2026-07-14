@@ -8,6 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Requests.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Responses.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
@@ -50,8 +51,21 @@ public sealed class GetPagedRepoStrategy<TService, TEntity> : RepoStrategyBase<T
         return this;
     }
 
+    public async Task<PagedEntities<TEntity>> Execute<TOrderBy>(Expression<Func<TEntity, TOrderBy>> orderBy)
+    {
+        return await ExecuteAndTransform(pagedEntities => pagedEntities, orderBy);
+    }
+
     public async Task<PagedResults<TResult>> ExecuteAndMap<TResult, TOrderBy>(
         Func<TEntity, TResult> map,
+        Expression<Func<TEntity, TOrderBy>> orderBy)
+        where TResult : class
+    {
+        return await ExecuteAndTransform(pagedEntities => pagedEntities.ToPagedResults(map), orderBy);
+    }
+
+    public async Task<TResult> ExecuteAndTransform<TResult, TOrderBy>(
+        Func<PagedEntities<TEntity>, TResult> transform,
         Expression<Func<TEntity, TOrderBy>> orderBy)
         where TResult : class
     {
@@ -86,12 +100,12 @@ public sealed class GetPagedRepoStrategy<TService, TEntity> : RepoStrategyBase<T
             Request.OrderByDescending ?? false,
             CancellationToken.Value);
 
-        var associatedPagedResults = pagedEntities.ToPagedResults(map);
+        var transformedResults = transform(pagedEntities);
 
         await InvokeAfterExecuteAction();
 
         LogSuccessfullyExecutedAction();
 
-        return associatedPagedResults;
+        return transformedResults;
     }
 }

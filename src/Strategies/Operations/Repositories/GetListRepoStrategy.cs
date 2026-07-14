@@ -40,7 +40,18 @@ public sealed class GetListRepoStrategy<TService, TEntity>
         return this;
     }
 
+    public async Task<List<TEntity>> Execute()
+    {
+        return await ExecuteAndTransform(entities => entities.ToList());
+    }
+
     public async Task<List<TResult>> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
+        where TResult : class
+    {
+        return await ExecuteAndTransform(entities => entities.Select(map).ToList());
+    }
+
+    public async Task<TResult> ExecuteAndTransform<TResult>(Func<List<TEntity>, TResult> transform)
         where TResult : class
     {
         if (CancellationToken == null)
@@ -68,12 +79,12 @@ public sealed class GetListRepoStrategy<TService, TEntity>
 
         var entities = await ListableRepository.GetList(EntityFilter, CancellationToken.Value);
 
-        var mappedEntities = entities.Select(map).ToList();
+        var transformedResults = transform(entities);
 
         await InvokeAfterExecuteAction();
 
         LogSuccessfullyExecutedAction();
 
-        return mappedEntities;
+        return transformedResults;
     }
 }

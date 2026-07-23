@@ -63,6 +63,11 @@ public sealed class GetRepoStrategy<TService, TEntity>
         return this;
     }
 
+    public async Task<TEntity> Execute()
+    {
+        return await ExecuteAndMap(entity => entity);
+    }
+
     public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
         where TResult : class
     {

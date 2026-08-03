@@ -1,6 +1,7 @@
 #nullable enable
 #addin nuget:?package=Cake.Coverlet&version=5.1.1
 #tool dotnet:?package=dotnet-reportgenerator-globaltool&version=5.5.1
+#load "base.cake" 
 #load "version.cake"
 var target = Argument("target", "Default");
 var configuration = Argument("configuration", "Release");

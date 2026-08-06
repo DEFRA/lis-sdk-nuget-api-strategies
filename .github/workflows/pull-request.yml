@@ -11,8 +11,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
   
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   get-version:
@@ -26,6 +25,8 @@ jobs:
     name: "Create Git Tag"
     needs: get-version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,7 +46,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Create and push tag
-        uses: cake-build/cake-action@v3
+        uses: cake-build/cake-action@d218f1133bb74a1df0b08c89cfd8fc100c09e1a0 # v3.0.1
         env:
           ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
         with:
@@ -75,6 +76,9 @@ jobs:
     name: "Publish to NuGet"
     needs: [get-version, build-pack, sonar-analysis, create-tag]
     if: needs.sonar-analysis.outputs.quality-gate-status == 'PASSED'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/publish.yml
     with:
       version: ${{ needs.get-version.outputs.version }}
@@ -89,7 +93,7 @@ jobs:
       contents: write
     steps:
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ needs.get-version.outputs.version }}
           name: "v${{ needs.get-version.outputs.version }}"

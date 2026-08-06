@@ -11,7 +11,7 @@ on:
         required: true
         type: string
     secrets:
-      SONAR_TOKEN:
+      LIS_SONAR_TOKEN:
         required: true
     outputs:
       quality-gate-status:

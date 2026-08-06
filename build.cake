@@ -76,6 +76,7 @@ Task("Restore")
           Verbosity = DotNetVerbosity.Minimal,
           Sources = new [] { 
              "https://api.nuget.org/v3/index.json",
+             "https://nuget.pkg.github.com/DEFRA/index.json"
           }
         };
    var projects = GetFiles("./**/*.csproj");

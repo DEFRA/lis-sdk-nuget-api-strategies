@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Defra.Livestock.Sdk.Api.Strategies.Abstractions" Version="0.4.0-prerelease.1" />
+    <PackageVersion Include="Defra.Livestock.Sdk.Api.Strategies.Abstractions" Version="0.0.1" />
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />

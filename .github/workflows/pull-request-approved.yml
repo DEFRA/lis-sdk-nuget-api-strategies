@@ -1,0 +1,98 @@
+name: "Pull Request Approved"
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+jobs:
+  get-version:
+    name: "Calculate Version"
+    if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/version.yml
+    with:
+      ref: ${{ github.event.pull_request.head.ref }}
+      branch: ${{ github.event.pull_request.head.ref }}
+      build-number: ${{ github.run_number }}
+
+  create-tag:
+    name: "Create Git Tag"
+    needs: get-version
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Create and push tag
+        uses: cake-build/cake-action@d218f1133bb74a1df0b08c89cfd8fc100c09e1a0 # v3.0.1
+        env:
+          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+        with:
+          script-path: ./tag.cake
+          target: CreateTag
+          arguments: |
+            tag_version: ${{ needs.get-version.outputs.version }}
+
+  build-pack:
+    name: "Build, Test and Pack"
+    needs: get-version
+    if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/build-pack.yml
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      ref: ${{ github.event.pull_request.head.ref }}
+
+  sonar-analysis:
+    name: "Sonar Analysis"
+    needs: [get-version, build-pack]
+    if: github.event.review.state == 'approved'
+    uses: ./.github/workflows/sonar.yml
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+      ref: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+
+  publish-nuget:
+    name: "Publish to NuGet"
+    needs: [get-version, build-pack, sonar-analysis, create-tag]
+    if: github.event.review.state == 'approved' && needs.sonar-analysis.outputs.quality-gate-status == 'PASSED'
+    permissions:
+      id-token: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.get-version.outputs.version }}
+    secrets: inherit
+
+  create-release:
+    name: "Create GitHub Release"
+    needs: [get-version, create-tag, sonar-analysis, publish-nuget]
+    if: github.event.review.state == 'approved' && needs.sonar-analysis.outputs.quality-gate-status == 'PASSED'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+        with:
+          tag_name: ${{ needs.get-version.outputs.version }}
+          name: "v${{ needs.get-version.outputs.version }}"
+          generate_release_notes: true

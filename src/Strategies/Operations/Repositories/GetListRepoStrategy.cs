@@ -8,6 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 
@@ -56,7 +57,12 @@ public sealed class GetListRepoStrategy<TService, TEntity>
     {
         if (CancellationToken == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.CancellationTokenRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
+        }
+
+        if (TargetDescription == null)
+        {
+            throw new InvalidOperationException(RepoStrategyConstants.Errors.PrimaryEntityDescriptionRequired);
         }
 
         if (ListableRepository == null)

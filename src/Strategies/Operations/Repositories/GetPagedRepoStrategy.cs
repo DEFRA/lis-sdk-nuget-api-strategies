@@ -11,6 +11,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Requests.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Responses.Pagination;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 
@@ -71,7 +72,12 @@ public sealed class GetPagedRepoStrategy<TService, TEntity> : RepoStrategyBase<T
     {
         if (CancellationToken == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.CancellationTokenRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
+        }
+
+        if (TargetDescription == null)
+        {
+            throw new InvalidOperationException(RepoStrategyConstants.Errors.PrimaryEntityDescriptionRequired);
         }
 
         if (PageableRepository == null)

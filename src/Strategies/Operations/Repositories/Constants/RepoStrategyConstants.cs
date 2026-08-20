@@ -11,13 +11,6 @@ internal static class RepoStrategyConstants
 {
     public static class Errors
     {
-        public const string LoggerRequired = "Logger must be provided for this operation";
-        public const string CancellationTokenRequired = "Cancellation token must be provided for this operation";
-        public const string OperatorContextRequired = "Operator context must be provided for this operation";
-
-        public const string OperatorContextAuthenticatedOperatorRequired =
-            "Authenticated operator must be provided for this operation";
-
         public const string GettableRepositoryRequired = "Gettable repository must be provided for this operation";
         public const string PageableRepositoryRequired = "Pageable repository must be provided for this operation";
         public const string ListableRepositoryRequired = "Listable repository must be provided for this operation";
@@ -26,8 +19,6 @@ internal static class RepoStrategyConstants
 
         public const string PrimaryEntityDescriptionRequired =
             "Primary entity description must be provided for this operation";
-
-        public const string ActionDescriptionRequired = "Action description must be provided for this operation";
 
         public const string RequestAndEntityFilterRequired =
             "Request and entity filter must be provided for this operation";

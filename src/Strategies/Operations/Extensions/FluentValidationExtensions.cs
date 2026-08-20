@@ -5,18 +5,20 @@
 // ReSharper disable CheckNamespace
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations;
 
-using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
+using System.Diagnostics.CodeAnalysis;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
 using FluentValidation;
 using FluentValidation.Results;
 
+[ExcludeFromCodeCoverage]
 public static class FluentValidationExtensions
 {
     public static TParent WithRequestValidation<TService, TParent>(
-        this IRepoStrategy<TService, TParent> strategyBuilder,
+        this IStrategy<TService, TParent> strategyBuilder,
         Func<Task<ValidationResult>> validateAction)
         where TService : class
-        where TParent : class, IRepoStrategy<TService, TParent>
+        where TParent : class, IStrategy<TService, TParent>
     {
         return strategyBuilder.WithRequestValidation(FluentValidationWrapper);
 

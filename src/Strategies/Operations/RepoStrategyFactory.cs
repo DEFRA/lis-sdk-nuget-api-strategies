@@ -4,36 +4,28 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations;
 
-using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
+using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories.Base;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories;
-using Microsoft.Extensions.Logging;
 
-public sealed class RepoStrategyFactory<TService> : IRepoStrategyFactory<TService>
+[ExcludeFromCodeCoverage]
+public sealed class RepoStrategyFactory<TService> : StrategyFactoryBase<TService, IRepoStrategyFactory<TService>>,
+    IRepoStrategyFactory<TService>
     where TService : class
 {
-    private ILogger<TService>? DefaultLogger { get; set; }
-
-    private IOperatorContext? DefaultOperatorContext { get; set; }
+    public RepoStrategyFactory()
+    {
+        SetParentFactory(this);
+    }
 
     private string? DefaultEntityDescription { get; set; }
 
-    public IRepoStrategyFactory<TService> WithDefaultLogger(ILogger<TService> logger)
-    {
-        this.DefaultLogger = logger;
-        return this;
-    }
-
-    public IRepoStrategyFactory<TService> WithDefaultOperatorContext(IOperatorContext operatorContext)
-    {
-        this.DefaultOperatorContext = operatorContext;
-        return this;
-    }
-
     public IRepoStrategyFactory<TService> WithDefaultEntityDescription(string entityDescription)
     {
-        this.DefaultEntityDescription = entityDescription;
+        DefaultEntityDescription = entityDescription;
         return this;
     }
 
@@ -100,15 +92,7 @@ public sealed class RepoStrategyFactory<TService> : IRepoStrategyFactory<TServic
     private void AttachDefaults<TBuilder>(IRepoStrategy<TService, TBuilder> strategyBuilder)
         where TBuilder : class, IRepoStrategy<TService, TBuilder>
     {
-        if (DefaultLogger != null)
-        {
-            strategyBuilder.WithLogger(DefaultLogger);
-        }
-
-        if (DefaultOperatorContext != null)
-        {
-            strategyBuilder.WithOperatorContext(DefaultOperatorContext);
-        }
+        AttachDefaultsToBuilder(strategyBuilder);
 
         if (DefaultEntityDescription != null)
         {

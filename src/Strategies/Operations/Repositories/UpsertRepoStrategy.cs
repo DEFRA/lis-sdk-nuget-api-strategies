@@ -10,6 +10,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Requests;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
@@ -143,14 +144,25 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
 
     public async Task<TEntity> Execute()
     {
+        return await ExecuteAndMap(entity => entity);
+    }
+
+    [SuppressMessage(
+        "SonarAnalyzer.CSharp",
+        "S3776: Cognitive Complexity of methods should not be too high",
+        Justification = "Reviewed. Due to necessary checks as part of the fluent builder pattern")
+    ]
+    public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
+        where TResult : class
+    {
         if (Logger == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.LoggerRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
         }
 
         if (CancellationToken == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.CancellationTokenRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
         }
 
         if (GettableRepository == null)
@@ -168,14 +180,14 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
             throw new InvalidOperationException(RepoStrategyConstants.Errors.UpdatableRepositoryRequired);
         }
 
-        if (EntityDescription == null)
+        if (TargetDescription == null)
         {
             throw new InvalidOperationException(RepoStrategyConstants.Errors.PrimaryEntityDescriptionRequired);
         }
 
         if (ActionDescription == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.ActionDescriptionRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.ActionDescriptionRequired);
         }
 
         if (Request == null || EntityFilter == null)
@@ -203,16 +215,16 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
 
         if (ReferenceRulesBuilder != null)
         {
-            await ReferenceRulesBuilder.Validate(ActionDescription, EntityDescription, Logger, CancellationToken.Value);
+            await ReferenceRulesBuilder.Validate(ActionDescription, TargetDescription, Logger, CancellationToken.Value);
         }
 
         var existingEntity = await GettableRepository.GetSingle(EntityFilter, CancellationToken.Value);
 
         if (existingEntity != null)
         {
-            ExistenceRulesBuilder?.Validate(Request, existingEntity, EntityDescription, Logger);
-            ConflictRulesBuilder?.Validate(Request, existingEntity, ActionDescription, EntityDescription, Logger);
-            BusinessRulesBuilder?.Validate(Request, existingEntity, ActionDescription, EntityDescription, Logger);
+            ExistenceRulesBuilder?.Validate(Request, existingEntity, TargetDescription, Logger);
+            ConflictRulesBuilder?.Validate(Request, existingEntity, ActionDescription, TargetDescription, Logger);
+            BusinessRulesBuilder?.Validate(Request, existingEntity, ActionDescription, TargetDescription, Logger);
 
             UpdateAction(existingEntity);
 
@@ -223,11 +235,13 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
                 await AfterUpdateAction.Invoke(updatedEntity);
             }
 
+            var mappedUpdatedEntity = map(updatedEntity);
+
             await InvokeAfterExecuteAction();
 
             LogSuccessfullyExecutedAction();
 
-            return updatedEntity;
+            return mappedUpdatedEntity;
         }
 
         var entityToCreate = CreateAction();
@@ -239,18 +253,12 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
             await AfterCreateAction.Invoke(createdEntity);
         }
 
+        var mappedCreatedEntity = map(createdEntity);
+
         await InvokeAfterExecuteAction();
 
         LogSuccessfullyExecutedAction();
 
-        return createdEntity;
-    }
-
-    public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
-        where TResult : class
-    {
-        var entity = await Execute();
-
-        return map(entity);
+        return mappedCreatedEntity;
     }
 }

@@ -11,6 +11,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Requests;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
@@ -73,12 +74,12 @@ public sealed class GetRepoStrategy<TService, TEntity>
     {
         if (Logger == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.LoggerRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
         }
 
         if (CancellationToken == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.CancellationTokenRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
         }
 
         if (GettableRepository == null)
@@ -86,7 +87,7 @@ public sealed class GetRepoStrategy<TService, TEntity>
             throw new InvalidOperationException(RepoStrategyConstants.Errors.GettableRepositoryRequired);
         }
 
-        if (EntityDescription == null)
+        if (TargetDescription == null)
         {
             throw new InvalidOperationException(RepoStrategyConstants.Errors.PrimaryEntityDescriptionRequired);
         }
@@ -110,10 +111,10 @@ public sealed class GetRepoStrategy<TService, TEntity>
         {
             LogEntityWithIdNotFound(Request.GetLoggableId());
 
-            throw new EntityNotFoundException($"{EntityDescription} not found");
+            throw new EntityNotFoundException($"{TargetDescription} not found");
         }
 
-        ExistenceRulesBuilder?.Validate(Request, entity, EntityDescription, Logger);
+        ExistenceRulesBuilder?.Validate(Request, entity, TargetDescription, Logger);
 
         var mappedEntity = map(entity);
 

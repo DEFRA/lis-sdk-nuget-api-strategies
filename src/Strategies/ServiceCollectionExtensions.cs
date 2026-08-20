@@ -4,6 +4,7 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
@@ -14,6 +15,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Client;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
+[ExcludeFromCodeCoverage]
 public static class ServiceCollectionExtensions
 {
     extension(IServiceCollection services)

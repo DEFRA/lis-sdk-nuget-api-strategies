@@ -5,11 +5,13 @@
 // ReSharper disable CheckNamespace
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations;
 
+using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
 using FluentValidation;
 using FluentValidation.Results;
 
+[ExcludeFromCodeCoverage]
 public static class FluentValidationExtensions
 {
     public static TParent WithRequestValidation<TService, TParent>(

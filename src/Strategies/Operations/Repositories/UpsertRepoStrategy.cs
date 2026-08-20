@@ -147,6 +147,11 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
         return await ExecuteAndMap(entity => entity);
     }
 
+    [SuppressMessage(
+        "SonarAnalyzer.CSharp",
+        "S3776: Cognitive Complexity of methods should not be too high",
+        Justification = "Reviewed. Due to necessary checks as part of the fluent builder pattern")
+    ]
     public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
         where TResult : class
     {

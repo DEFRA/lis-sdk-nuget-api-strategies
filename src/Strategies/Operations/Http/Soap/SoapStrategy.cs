@@ -274,6 +274,11 @@ public sealed class SoapStrategy<TService>
 #pragma warning restore S108
     }
 
+    [SuppressMessage(
+        "SonarAnalyzer.CSharp",
+        "S3776: Cognitive Complexity of methods should not be too high",
+        Justification = "Reviewed. Due to necessary checks as part of the fluent builder pattern")
+    ]
     private async Task<TResult?> ExecuteExtractAndTransformResponse<TResult>(
         Func<XElement?, TResult?> transform,
         bool requiresResponseContent = true,

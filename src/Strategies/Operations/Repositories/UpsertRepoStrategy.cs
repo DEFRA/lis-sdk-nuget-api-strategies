@@ -144,6 +144,12 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
 
     public async Task<TEntity> Execute()
     {
+        return await ExecuteAndMap(entity => entity);
+    }
+
+    public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
+        where TResult : class
+    {
         if (Logger == null)
         {
             throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
@@ -224,11 +230,13 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
                 await AfterUpdateAction.Invoke(updatedEntity);
             }
 
+            var mappedUpdatedEntity = map(updatedEntity);
+
             await InvokeAfterExecuteAction();
 
             LogSuccessfullyExecutedAction();
 
-            return updatedEntity;
+            return mappedUpdatedEntity;
         }
 
         var entityToCreate = CreateAction();
@@ -240,18 +248,12 @@ public sealed class UpsertRepoStrategy<TService, TEntity>
             await AfterCreateAction.Invoke(createdEntity);
         }
 
+        var mappedCreatedEntity = map(createdEntity);
+
         await InvokeAfterExecuteAction();
 
         LogSuccessfullyExecutedAction();
 
-        return createdEntity;
-    }
-
-    public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
-        where TResult : class
-    {
-        var entity = await Execute();
-
-        return map(entity);
+        return mappedCreatedEntity;
     }
 }

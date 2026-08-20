@@ -133,6 +133,12 @@ public sealed class UpdateRepoStrategy<TService, TEntity>
 
     public async Task<TEntity> Execute()
     {
+        return await ExecuteAndMap(entity => entity);
+    }
+
+    public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
+        where TResult : class
+    {
         if (Logger == null)
         {
             throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
@@ -213,18 +219,12 @@ public sealed class UpdateRepoStrategy<TService, TEntity>
             await AfterUpdateAction.Invoke(updatedEntity);
         }
 
+        var mappedEntity = map(updatedEntity);
+
         await InvokeAfterExecuteAction();
 
         LogSuccessfullyExecutedActionWithId(Request.GetLoggableId());
 
-        return updatedEntity;
-    }
-
-    public async Task<TResult> ExecuteAndMap<TResult>(Func<TEntity, TResult> map)
-        where TResult : class
-    {
-        var entity = await Execute();
-
-        return map(entity);
+        return mappedEntity;
     }
 }

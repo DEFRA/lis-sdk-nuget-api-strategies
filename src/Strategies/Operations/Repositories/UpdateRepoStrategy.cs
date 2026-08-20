@@ -11,6 +11,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Requests;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
@@ -134,12 +135,12 @@ public sealed class UpdateRepoStrategy<TService, TEntity>
     {
         if (Logger == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.LoggerRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
         }
 
         if (CancellationToken == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.CancellationTokenRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
         }
 
         if (GettableRepository == null)
@@ -152,14 +153,14 @@ public sealed class UpdateRepoStrategy<TService, TEntity>
             throw new InvalidOperationException(RepoStrategyConstants.Errors.UpdatableRepositoryRequired);
         }
 
-        if (EntityDescription == null)
+        if (TargetDescription == null)
         {
             throw new InvalidOperationException(RepoStrategyConstants.Errors.PrimaryEntityDescriptionRequired);
         }
 
         if (ActionDescription == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.ActionDescriptionRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.ActionDescriptionRequired);
         }
 
         if (Request == null || EntityFilter == null)
@@ -182,7 +183,7 @@ public sealed class UpdateRepoStrategy<TService, TEntity>
 
         if (ReferenceRulesBuilder != null)
         {
-            await ReferenceRulesBuilder.Validate(ActionDescription, EntityDescription, Logger, CancellationToken.Value);
+            await ReferenceRulesBuilder.Validate(ActionDescription, TargetDescription, Logger, CancellationToken.Value);
         }
 
         var entityToUpdate = await GettableRepository.GetSingle(EntityFilter, CancellationToken.Value);
@@ -191,12 +192,12 @@ public sealed class UpdateRepoStrategy<TService, TEntity>
         {
             LogEntityWithIdNotFound(Request.GetLoggableId());
 
-            throw new EntityNotFoundException($"{EntityDescription} not found");
+            throw new EntityNotFoundException($"{TargetDescription} not found");
         }
 
-        ExistenceRulesBuilder?.Validate(Request, entityToUpdate, EntityDescription, Logger);
-        ConflictRulesBuilder?.Validate(Request, entityToUpdate, ActionDescription, EntityDescription, Logger);
-        BusinessRulesBuilder?.Validate(Request, entityToUpdate, ActionDescription, EntityDescription, Logger);
+        ExistenceRulesBuilder?.Validate(Request, entityToUpdate, TargetDescription, Logger);
+        ConflictRulesBuilder?.Validate(Request, entityToUpdate, ActionDescription, TargetDescription, Logger);
+        BusinessRulesBuilder?.Validate(Request, entityToUpdate, ActionDescription, TargetDescription, Logger);
 
         if (BeforeUpdateAction != null)
         {

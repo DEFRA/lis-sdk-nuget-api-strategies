@@ -8,6 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
@@ -67,12 +68,12 @@ public sealed class CreateRepoStrategy<TService, TEntity>
     {
         if (Logger == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.LoggerRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
         }
 
         if (CancellationToken == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.CancellationTokenRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
         }
 
         if (CreatableRepository == null)
@@ -80,14 +81,14 @@ public sealed class CreateRepoStrategy<TService, TEntity>
             throw new InvalidOperationException(RepoStrategyConstants.Errors.CreatableRepositoryRequired);
         }
 
-        if (EntityDescription == null)
+        if (TargetDescription == null)
         {
             throw new InvalidOperationException(RepoStrategyConstants.Errors.PrimaryEntityDescriptionRequired);
         }
 
         if (ActionDescription == null)
         {
-            throw new InvalidOperationException(RepoStrategyConstants.Errors.ActionDescriptionRequired);
+            throw new InvalidOperationException(StrategyConstants.Errors.ActionDescriptionRequired);
         }
 
         if (CreateAction == null)
@@ -105,7 +106,7 @@ public sealed class CreateRepoStrategy<TService, TEntity>
 
         if (ReferenceRulesBuilder != null)
         {
-            await ReferenceRulesBuilder.Validate(ActionDescription, EntityDescription, Logger, CancellationToken.Value);
+            await ReferenceRulesBuilder.Validate(ActionDescription, TargetDescription, Logger, CancellationToken.Value);
         }
 
         var entityToCreate = CreateAction();

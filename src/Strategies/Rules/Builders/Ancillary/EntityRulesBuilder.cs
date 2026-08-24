@@ -4,11 +4,9 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Rules.Builders.Ancillary;
 
-using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories.Rules;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules;
 
-[ExcludeFromCodeCoverage]
 internal class EntityRulesBuilder<TEntity>
     where TEntity : class
 {

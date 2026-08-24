@@ -49,4 +49,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- Schema files configuration -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Strategies.Tests'">
+    <None Include="TestFramework\TestData\Soap\Schemas\File*.xsd" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="TestFramework\TestData\Soap\Schemas\Embedded*.xsd" />
+  </ItemGroup>
+
 </Project>

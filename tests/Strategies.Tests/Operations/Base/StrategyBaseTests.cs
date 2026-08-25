@@ -38,7 +38,8 @@ public class StrategyBaseTests
         var operatorContext = Substitute.For<IOperatorContext>();
         Func<Task> beforeAction = () => Task.CompletedTask;
         Func<Task> afterAction = () => Task.CompletedTask;
-        Func<Task<RequestValidationResult>> validateAction = () => Task.FromResult(new RequestValidationResult(Array.Empty<RequestValidationFailure>()));
+        Func<Task<RequestValidationResult>> validateAction = () =>
+            Task.FromResult(new RequestValidationResult(Array.Empty<RequestValidationFailure>()));
 
         // Act
         var result = strategy
@@ -116,18 +117,21 @@ public class StrategyBaseTests
     }
 
     [Fact]
-    public void EnsureOperatorHasRequiredPermissions_WhenRequiresAuthenticatedOperatorIsTrueAndContextIsNull_ThrowsInvalidOperationException()
+    public void
+        EnsureOperatorHasRequiredPermissions_WhenRequiresAuthenticatedOperatorIsTrueAndContextIsNull_ThrowsInvalidOperationException()
     {
         // Arrange
         strategy.WithRequiresAuthenticatedOperator();
 
         // Act & Assert
-        var exception = Should.Throw<InvalidOperationException>(() => strategy.CallEnsureOperatorHasRequiredPermissions());
+        var exception =
+            Should.Throw<InvalidOperationException>(() => strategy.CallEnsureOperatorHasRequiredPermissions());
         exception.Message.ShouldBe(StrategyConstants.Errors.OperatorContextRequired);
     }
 
     [Fact]
-    public void EnsureOperatorHasRequiredPermissions_WhenRequiresAuthenticatedOperatorIsTrueAndNotAuthenticated_ThrowsUnauthorizedAccessException()
+    public void
+        EnsureOperatorHasRequiredPermissions_WhenRequiresAuthenticatedOperatorIsTrueAndNotAuthenticated_ThrowsUnauthorizedAccessException()
     {
         // Arrange
         var operatorContext = Substitute.For<IOperatorContext>();
@@ -138,12 +142,14 @@ public class StrategyBaseTests
             .WithRequiresAuthenticatedOperator();
 
         // Act & Assert
-        var exception = Should.Throw<UnauthorizedAccessException>(() => strategy.CallEnsureOperatorHasRequiredPermissions());
+        var exception =
+            Should.Throw<UnauthorizedAccessException>(() => strategy.CallEnsureOperatorHasRequiredPermissions());
         exception.Message.ShouldBe(StrategyConstants.Errors.OperatorContextAuthenticatedOperatorRequired);
     }
 
     [Fact]
-    public void EnsureOperatorHasRequiredPermissions_WhenRequiresAuthenticatedOperatorIsTrueAndAuthenticated_DoesNotThrow()
+    public void
+        EnsureOperatorHasRequiredPermissions_WhenRequiresAuthenticatedOperatorIsTrueAndAuthenticated_DoesNotThrow()
     {
         // Arrange
         var operatorContext = Substitute.For<IOperatorContext>();
@@ -166,7 +172,8 @@ public class StrategyBaseTests
             .WithActionDescription("Action");
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<InvalidOperationException>(() => strategy.CallExecuteRequestValidation());
+        var exception =
+            await Should.ThrowAsync<InvalidOperationException>(() => strategy.CallExecuteRequestValidation());
         exception.Message.ShouldBe(StrategyConstants.Errors.LoggerRequired);
     }
 
@@ -179,7 +186,8 @@ public class StrategyBaseTests
             .WithActionDescription("Action");
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<InvalidOperationException>(() => strategy.CallExecuteRequestValidation());
+        var exception =
+            await Should.ThrowAsync<InvalidOperationException>(() => strategy.CallExecuteRequestValidation());
         exception.Message.ShouldBe(StrategyConstants.Errors.TargetDescriptionRequired);
     }
 
@@ -192,7 +200,8 @@ public class StrategyBaseTests
             .WithTargetDescription("Target");
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<InvalidOperationException>(() => strategy.CallExecuteRequestValidation());
+        var exception =
+            await Should.ThrowAsync<InvalidOperationException>(() => strategy.CallExecuteRequestValidation());
         exception.Message.ShouldBe(StrategyConstants.Errors.ActionDescriptionRequired);
     }
 
@@ -210,7 +219,8 @@ public class StrategyBaseTests
     }
 
     [Fact]
-    public async Task ExecuteRequestValidation_WhenValidateActionReturnsInvalid_ThrowsRequestValidationExceptionAndLogsWarning()
+    public async Task
+        ExecuteRequestValidation_WhenValidateActionReturnsInvalid_ThrowsRequestValidationExceptionAndLogsWarning()
     {
         // Arrange
         var failures = new List<RequestValidationFailure> { new("Property", "Error") };
@@ -223,7 +233,8 @@ public class StrategyBaseTests
             .WithRequestValidation(() => Task.FromResult(validationResult));
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<RequestValidationException>(() => strategy.CallExecuteRequestValidation());
+        var exception =
+            await Should.ThrowAsync<RequestValidationException>(() => strategy.CallExecuteRequestValidation());
         exception.Errors.ShouldBe(failures);
         logger.ShouldHaveReceived(LogLevel.Warning, "Execute action [target] failed validation");
     }
@@ -253,7 +264,8 @@ public class StrategyBaseTests
         logger.ShouldHaveReceived(LogLevel.Information, "Executing action [target] by operator op123");
         logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed action [target] by operator op123");
         logger.ShouldHaveReceived(LogLevel.Information, "Executing action [target] with id id-1 by operator op123");
-        logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed action [target] with id id-1 by operator op123");
+        logger.ShouldHaveReceived(LogLevel.Information,
+            "Successfully executed action [target] with id id-1 by operator op123");
     }
 
     [Fact]

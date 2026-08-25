@@ -426,6 +426,136 @@ public class SoapStrategyTests
     }
 
     [Fact]
+    public async Task Execute_WithPayloadTransformer_ShouldTransformPayloadBeforeSending()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        strategy.WithPayload(() => new XElement("OriginalRequest", new XElement("Value", "original-value")))
+            .WithPayloadTransformer(raw => new XElement("TransformedRequest", new XElement("TransformedValue", raw?.Element("Value")?.Value?.ToUpperInvariant())));
+
+        var responseXml = new XElement("Response", new XElement("Result", "OK"));
+        var soapResponse = new SoapResponse
+        {
+            HasContent = true,
+            HasBody = true,
+            BodyContent = responseXml,
+        };
+
+        XElement? capturedPayload = null;
+        soapHttpClient.PostAsync("service", Arg.Do<XElement>(xml => capturedPayload = xml), Arg.Any<CancellationToken>())
+            .Returns(soapResponse);
+
+        // Act
+        var result = await strategy.Execute();
+
+        // Assert
+        result.ShouldBe(responseXml);
+        capturedPayload.ShouldNotBeNull();
+        capturedPayload.Name.LocalName.ShouldBe("TransformedRequest");
+        capturedPayload.Element("TransformedValue")?.Value.ShouldBe("ORIGINAL-VALUE");
+        logger.ShouldHaveReceived(LogLevel.Information, "Executing do action [sample api] by operator ");
+        logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed do action [sample api] by operator ");
+    }
+
+    [Fact]
+    public async Task Execute_WithResponseTransformer_ShouldTransformResponseBeforeReturning()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        strategy.WithResponseTransformer(raw => raw?.Element("NestedData"));
+
+        var nestedData = new XElement("NestedData", new XElement("Message", "TransformedSuccess"));
+        var responseXml = new XElement("RawEnvelope", nestedData);
+        var soapResponse = new SoapResponse
+        {
+            HasContent = true,
+            HasBody = true,
+            BodyContent = responseXml,
+        };
+
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(soapResponse);
+
+        // Act
+        var result = await strategy.Execute();
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Name.LocalName.ShouldBe("NestedData");
+        result.Element("Message")?.Value.ShouldBe("TransformedSuccess");
+        logger.ShouldHaveReceived(LogLevel.Information, "Executing do action [sample api] by operator ");
+        logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed do action [sample api] by operator ");
+    }
+
+    [Fact]
+    public async Task ExecuteGeneric_WithResponseTransformer_ShouldTransformResponseBeforeDeserializing()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        strategy.WithResponseTransformer(raw => raw?.Element("TestEntity"));
+
+        var entity = new TestEntity { Id = "555", Name = "TransformedFromEnvelope" };
+        var entityXml = SoapSerializer.SerializeToXElement(entity);
+        var envelopeXml = new XElement("Envelope", entityXml);
+        var soapResponse = new SoapResponse
+        {
+            HasContent = true,
+            HasBody = true,
+            BodyContent = envelopeXml,
+        };
+
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(soapResponse);
+
+        // Act
+        var result = await strategy.Execute<TestEntity>();
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Id.ShouldBe("555");
+        result.Name.ShouldBe("TransformedFromEnvelope");
+        logger.ShouldHaveReceived(LogLevel.Information, "Executing do action [sample api] by operator ");
+        logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed do action [sample api] by operator ");
+    }
+
+    [Fact]
+    public async Task ExecuteAndTransform_WithResponseTransformer_ShouldTransformResponseBeforeCustomMapping()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        strategy.WithResponseTransformer(raw => raw?.Element("InnerItem"));
+
+        var innerItemXml = new XElement("InnerItem", new XElement("Name", "InnerTransformedName"));
+        var envelopeXml = new XElement("Wrapper", innerItemXml);
+        var soapResponse = new SoapResponse
+        {
+            HasContent = true,
+            HasBody = true,
+            BodyContent = envelopeXml,
+        };
+
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(soapResponse);
+
+        // Act
+        var result = await strategy.ExecuteAndTransform(xml => new TestResult { MappedName = xml.Element("Name")?.Value });
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.MappedName.ShouldBe("InnerTransformedName");
+        logger.ShouldHaveReceived(LogLevel.Information, "Executing do action [sample api] by operator ");
+        logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed do action [sample api] by operator ");
+    }
+
+    [Fact]
     public async Task ExecuteGeneric_WithValidExecutionFlow_ShouldDeserializeResult()
     {
         // Arrange

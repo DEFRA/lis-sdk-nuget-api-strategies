@@ -8,7 +8,6 @@ using System;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
-using Defra.Livestock.Sdk.Api.Strategies.Tests;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.TestServices;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -48,7 +47,8 @@ public class StrategyFactoryBaseTests
         var uninitializedFactory = new UninitializedStrategyFactory();
 
         // Act & Assert
-        var exception = Should.Throw<InvalidOperationException>(() => uninitializedFactory.CallGetParentFactory());
+        var exception = Should.Throw<InvalidOperationException>(uninitializedFactory.CallGetParentFactory);
+
         exception.Message.ShouldBe("The parent factory has not been set.");
     }
 

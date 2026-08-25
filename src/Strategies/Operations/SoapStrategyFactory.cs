@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations;
 
-using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Client;
@@ -12,7 +11,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap;
 using Microsoft.Extensions.DependencyInjection;
 
-[ExcludeFromCodeCoverage]
 public sealed class SoapStrategyFactory<TService> : StrategyFactoryBase<TService, ISoapStrategyFactory<TService>>,
     ISoapStrategyFactory<TService>
     where TService : class

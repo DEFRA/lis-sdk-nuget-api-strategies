@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 
-using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Base;
@@ -17,7 +16,6 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 /// <typeparam name="TService">The type of the service class that is consuming the derived builder.</typeparam>
 /// <typeparam name="TParent">The type of the derived builder.</typeparam>
-[ExcludeFromCodeCoverage]
 public abstract partial class StrategyBase<TService, TParent> : IStrategy<TService, TParent>
     where TService : class
     where TParent : class

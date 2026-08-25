@@ -15,7 +15,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
 
-[ExcludeFromCodeCoverage]
 public sealed class UpsertRepoStrategy<TService, TEntity>
     : RepoStrategyBase<TService, IUpsertRepoStrategy<TService, TEntity>>,
         IUpsertRepoStrategy<TService, TEntity>

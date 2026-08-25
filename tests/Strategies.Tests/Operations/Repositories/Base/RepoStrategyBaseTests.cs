@@ -77,6 +77,21 @@ public class RepoStrategyBaseTests
         logger.ShouldHaveReceived(LogLevel.Warning, "TestEntity with id 123 not found");
     }
 
+    [Fact]
+    public void LogEntityWithIdNotFound_WhenTargetDescriptionIsNull_DoesNotLog()
+    {
+        // Arrange
+        strategy
+            .WithLogger(logger)
+            .WithActionDescription("Find");
+
+        // Act
+        strategy.InvokeLogEntityWithIdNotFound("123");
+
+        // Assert
+        logger.DidNotReceiveWithAnyArgs().Log(default, default, default, default, default!);
+    }
+
     private sealed class TestRepoStrategy : RepoStrategyBase<TestService, TestRepoStrategy>
     {
         public TestRepoStrategy()

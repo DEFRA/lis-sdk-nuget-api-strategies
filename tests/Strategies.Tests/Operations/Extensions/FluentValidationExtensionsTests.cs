@@ -73,7 +73,7 @@ public class FluentValidationExtensionsTests
         returnedStrategy.ShouldBeSameAs(strategy);
         result.IsValid.ShouldBeFalse();
         result.RuleSetsExecuted.ShouldBe(["RuleSet1", "RuleSet2"]);
-        result.Errors.Count().ShouldBe(3);
+        result.Errors.Count.ShouldBe(3);
 
         var errorList = result.Errors.ToList();
 

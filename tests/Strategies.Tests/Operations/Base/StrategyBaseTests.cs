@@ -257,6 +257,24 @@ public class StrategyBaseTests
     }
 
     [Fact]
+    public void LoggingMethods_WhenTargetDescriptionIsNull_DoesNotLog()
+    {
+        // Arrange
+        strategy
+            .WithLogger(logger)
+            .WithActionDescription("Action");
+
+        // Act
+        strategy.CallLogExecutingAction();
+        strategy.CallLogSuccessfullyExecutedAction();
+        strategy.CallLogExecutingActionWithId("id-1");
+        strategy.CallLogSuccessfullyExecutedActionWithId("id-1");
+
+        // Assert
+        logger.DidNotReceiveWithAnyArgs().Log(default, default, default, default, default!);
+    }
+
+    [Fact]
     public void GetOperatorLoggableId_WhenOperatorContextNullOrHasNoOperator_ReturnsEmptyString()
     {
         // Act & Assert

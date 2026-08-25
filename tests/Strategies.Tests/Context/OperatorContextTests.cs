@@ -6,6 +6,7 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Context;
 
 using System.Security.Claims;
 using Defra.Livestock.Sdk.Api.Strategies.Context;
+using NSubstitute;
 using Shouldly;
 using Xunit;
 
@@ -151,6 +152,24 @@ public class OperatorContextTests
         context.HasOperator.ShouldBeTrue();
         context.HasAuthenticatedOperator.ShouldBeFalse();
         context.Operator.Id.ShouldBe("unauth-user");
+        context.Operator.IsAuthenticated.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SetOperatorByClaimsPrincipal_WhenIdentityIsNull_SetsAuthenticatedToFalse()
+    {
+        // Arrange
+        var context = new OperatorContext();
+        var principal = Substitute.For<ClaimsPrincipal>();
+        principal.FindFirst(ClaimTypes.NameIdentifier).Returns(new Claim(ClaimTypes.NameIdentifier, "id-null-identity"));
+        principal.Identity.Returns((System.Security.Principal.IIdentity?)null);
+
+        // Act
+        context.SetOperatorByClaimsPrincipal(principal);
+
+        // Assert
+        context.HasOperator.ShouldBeTrue();
+        context.HasAuthenticatedOperator.ShouldBeFalse();
         context.Operator.IsAuthenticated.ShouldBeFalse();
     }
 

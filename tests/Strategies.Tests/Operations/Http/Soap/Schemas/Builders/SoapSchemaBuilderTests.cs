@@ -242,4 +242,118 @@ public class SoapSchemaBuilderTests
         entity.ShouldBeAssignableTo<Stream>();
         ((Stream)entity).Dispose();
     }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_RegisterResource_WhenCalledTwiceWithSameAssembly_DoesNotDuplicate()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+
+        // Act
+        resolver.RegisterResource(Assembly.GetExecutingAssembly(), EmbeddedSchemaResourceName);
+        resolver.RegisterResource(Assembly.GetExecutingAssembly(), EmbeddedSchemaResourceName);
+
+        // Assert
+        var uri = resolver.ResolveUri(null, "EmbeddedTestSchema.xsd");
+        uri.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_ResolveUri_WithBackslashesInRelativeUri_ResolvesNormalizedPath()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+        resolver.RegisterFile(FileSchemaFilePath);
+        resolver.RegisterResource(Assembly.GetExecutingAssembly(), EmbeddedSchemaResourceName);
+
+        // Act
+        var fileUri = resolver.ResolveUri(null, @"TestFramework\TestData\Soap\Schemas\FileTestSchema.xsd");
+        var resourceUri = resolver.ResolveUri(null, @"Soap\Schemas\EmbeddedTestSchema.xsd");
+
+        // Assert
+        fileUri.ShouldNotBeNull();
+        resourceUri.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_GetEntity_WhenResourceStreamNotFound_ThrowsNotSupportedExceptionFromFallback()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+        var uri = new Uri($"embedded://{Assembly.GetExecutingAssembly().GetName().Name}/NonExistentResource.xsd");
+
+        // Act & Assert
+        Should.Throw<NotSupportedException>(() => resolver.GetEntity(uri, null, typeof(Stream)));
+    }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_GetEntity_WhenNonExistentFileUri_CallsFallbackResolver()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+        var nonExistentFileUri = new Uri("file:///C:/non_existent_folder_xyz/schema.xsd");
+
+        // Act & Assert
+        Should.Throw<Exception>(() => resolver.GetEntity(nonExistentFileUri, null, typeof(Stream)));
+    }
+
+    [Fact]
+    public void SoapSchemaBuilder_Add_WithRelativeFileNameInAppContext_BuildsSuccessfully()
+    {
+        // Arrange
+        var builder = new SoapSchemaBuilder();
+        var relativePath = Path.Combine("TestFramework", "TestData", "Soap", "Schemas", "FileTestSchema.xsd");
+
+        // Act
+        var returnedBuilder = builder.Add(relativePath);
+        var schemaSet = builder.Build();
+
+        // Assert
+        returnedBuilder.ShouldBe(builder);
+        schemaSet.ShouldNotBeNull();
+        schemaSet.IsCompiled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_GetEntity_WithAssemblyFromAppDomain_ReturnsStream()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+        var uri = new Uri($"embedded://{Assembly.GetExecutingAssembly().GetName().Name}/{EmbeddedSchemaResourceName}");
+
+        // Act
+        var entity = resolver.GetEntity(uri, null, typeof(Stream));
+
+        // Assert
+        entity.ShouldNotBeNull();
+        entity.ShouldBeAssignableTo<Stream>();
+        ((Stream)entity).Dispose();
+    }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_ResolveUri_WithAssemblyEndingMatches_ResolvesUri()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+        resolver.RegisterResource(Assembly.GetExecutingAssembly(), EmbeddedSchemaResourceName);
+
+        // Act
+        var uriEndingWithFilename = resolver.ResolveUri(null, "EmbeddedTestSchema.xsd");
+        var uriEndingWithResource = resolver.ResolveUri(null, "TestData.Soap.Schemas.EmbeddedTestSchema.xsd");
+
+        // Assert
+        uriEndingWithFilename.ShouldNotBeNull();
+        uriEndingWithResource.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void SoapSchemaXmlResolver_GetEntity_WithHttpUri_CallsFallbackResolver()
+    {
+        // Arrange
+        var resolver = new SoapSchemaXmlResolver();
+        var httpUri = new Uri("http://localhost:65534/nonexistent.xsd");
+
+        // Act & Assert
+        Should.Throw<Exception>(() => resolver.GetEntity(httpUri, null, typeof(Stream)));
+    }
 }

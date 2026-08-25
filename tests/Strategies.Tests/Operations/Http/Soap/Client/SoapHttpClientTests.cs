@@ -35,6 +35,7 @@ public class SoapHttpClientTests
         client.WithSoapAction("urn:test:action").ShouldBe(client);
         client.WithMediaType("text/xml").ShouldBe(client);
         client.WithHeader("X-Custom", "Value").ShouldBe(client);
+        client.WithHeader("X-Custom", "OverwrittenValue").ShouldBe(client);
         client.WithXmlDeclaration(true).ShouldBe(client);
         client.WithVerboseOutput((desc, data) => { }).ShouldBe(client);
     }
@@ -316,6 +317,88 @@ public class SoapHttpClientTests
         response.HasContent.ShouldBeTrue();
         response.HasBody.ShouldBeTrue();
         response.BodyContent.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task PostAsync_WhenContentIsNull_ShouldReturnEmptySoapResponse()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = null,
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+        client.WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act
+        var response = await client.PostAsync("soap/service", new XElement("TestRequest"), TestContext.Current.CancellationToken);
+
+        // Assert
+        response.HasContent.ShouldBeFalse();
+        response.HasBody.ShouldBeFalse();
+        response.BodyContent.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task PostAsync_WhenContentLengthIsZero_ShouldReturnEmptySoapResponse()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(string.Empty, Encoding.UTF8, "text/xml"),
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+        client.WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act
+        var response = await client.PostAsync("soap/service", new XElement("TestRequest"), TestContext.Current.CancellationToken);
+
+        // Assert
+        response.HasContent.ShouldBeFalse();
+        response.HasBody.ShouldBeFalse();
+        response.BodyContent.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task PostAsync_WithSoapFaultWithoutCodeOrDetails_ShouldParseFaultWithNullFields()
+    {
+        // Arrange
+        var soapResponseBody =
+            "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">" +
+            "  <soap:Body>" +
+            "    <FaultWrapper>" +
+            "      <soap:Fault>" +
+            "      </soap:Fault>" +
+            "    </FaultWrapper>" +
+            "  </soap:Body>" +
+            "</soap:Envelope>";
+
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(soapResponseBody, Encoding.UTF8, "text/xml"),
+        });
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+        client.WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act
+        var response = await client.PostAsync("soap/service", new XElement("TestRequest"), TestContext.Current.CancellationToken);
+
+        // Assert
+        response.HasContent.ShouldBeTrue();
+        response.HasBody.ShouldBeTrue();
+        response.HasSoapFault.ShouldBeTrue();
+        response.SoapFaultCode.ShouldBeNull();
+        response.SoapFaultDetails.ShouldBeNull();
     }
 
     private sealed class TestHttpMessageHandler : HttpMessageHandler

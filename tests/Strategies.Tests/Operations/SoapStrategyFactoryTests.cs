@@ -86,4 +86,30 @@ public class SoapStrategyFactoryTests
         verboseAction?.Invoke("test", "data");
         verboseCalled.ShouldBeTrue();
     }
+
+    [Fact]
+    public void BuildSoapStrategy_WhenDefaultsNotConfigured_ShouldCreateStrategyWithoutDefaults()
+    {
+        // Arrange
+        var factory = new SoapStrategyFactory<TestService>(serviceProvider);
+
+        // Act
+        var strategy = factory.BuildSoapStrategy();
+
+        // Assert
+        strategy.ShouldNotBeNull();
+        strategy.ShouldBeOfType<SoapStrategy<TestService>>();
+
+        var soapStrategy = (SoapStrategy<TestService>)strategy;
+        var flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        typeof(SoapStrategy<TestService>).GetProperty("Logger", flags)?.GetValue(soapStrategy).ShouldBeNull();
+        typeof(SoapStrategy<TestService>).GetProperty("TargetDescription", flags)?.GetValue(soapStrategy).ShouldBeNull();
+        typeof(SoapStrategy<TestService>).GetProperty("BaseUrl", flags)?.GetValue(soapStrategy).ShouldBeNull();
+        typeof(SoapStrategy<TestService>).GetProperty("ServiceUrl", flags)?.GetValue(soapStrategy).ShouldBeNull();
+        typeof(SoapStrategy<TestService>).GetProperty("SoapAction", flags)?.GetValue(soapStrategy).ShouldBeNull();
+        typeof(SoapStrategy<TestService>).GetProperty("MediaType", flags)?.GetValue(soapStrategy).ShouldBeNull();
+        typeof(SoapStrategy<TestService>).GetProperty("IncludeXmlDeclaration", flags)?.GetValue(soapStrategy).ShouldBe(false);
+        typeof(SoapStrategy<TestService>).GetProperty("VerboseOutputAction", flags)?.GetValue(soapStrategy).ShouldBeNull();
+    }
 }

@@ -84,4 +84,21 @@ public class ExistenceRulesBuilderTests
         exception.Message.ShouldBe("TestEntity not found");
         logger.ShouldHaveReceived(LogLevel.Warning, "TestEntity with id test-123 not found");
     }
+
+    [Fact]
+    public void Validate_WhenRuleFailsAndLoggingDisabled_ThrowsExistenceRuleException()
+    {
+        // Arrange
+        var disabledLogger = Substitute.For<ILogger<TestService>>();
+        disabledLogger.IsEnabled(Arg.Any<LogLevel>()).Returns(false);
+
+        builder.Add(e => e.Name == "Inactive", "Entity must be inactive");
+
+        // Act & Assert
+        var exception = Should.Throw<ExistenceRuleException>(() =>
+            builder.Validate(request, entity, "TestEntity", disabledLogger));
+
+        exception.Message.ShouldBe("TestEntity not found");
+        disabledLogger.DidNotReceiveWithAnyArgs().Log(default, default, default, default, default!);
+    }
 }

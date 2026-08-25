@@ -654,6 +654,88 @@ public class SoapStrategyTests
     }
 
     [Fact]
+    public async Task ExecuteAndTransform_WhenTResponseIsXElement_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
+            strategy.ExecuteAndTransform<XElement, TestResult>(e => new TestResult()));
+        ex.Message.ShouldBe("Cannot deserialize to XElement");
+    }
+
+    [Fact]
+    public async Task ExecuteAndTransform_WhenTResponseIsXElementWithNestedDeserializer_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
+            strategy.ExecuteAndTransform<XElement, TestResult>((e, _) => new TestResult()));
+        ex.Message.ShouldBe("Cannot deserialize to XElement");
+    }
+
+    [Fact]
+    public async Task ExecuteAndTransform_WithNestedDeserializer_ShouldReturnTransformed()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        var entity = new TestEntity { Id = "999", Name = "NestedTransformed" };
+        var responseXml = SoapSerializer.SerializeToXElement(entity);
+        var soapResponse = new SoapResponse
+        {
+            HasContent = true,
+            HasBody = true,
+            BodyContent = responseXml,
+        };
+
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(soapResponse);
+
+        // Act
+        var result = await strategy.ExecuteAndTransform<TestEntity, TestResult>((responseObj, _) =>
+            new TestResult { MappedName = responseObj.Name });
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.MappedName.ShouldBe("NestedTransformed");
+    }
+
+    [Fact]
+    public async Task Execute_WithVerboseOutputAndPayloadAndResponseTransformers_EmitsVerboseLogs()
+    {
+        // Arrange
+        var verboseOutputs = new List<(string Description, string? Data)>();
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        strategy
+            .WithVerboseOutput((desc, data) => verboseOutputs.Add((desc, data)))
+            .WithPayloadTransformer(p => new XElement("TransformedRequest", p))
+            .WithResponseTransformer(r => new XElement("TransformedResponse", r));
+
+        var responseXml = new XElement("RawResponse");
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(new SoapResponse { HasContent = true, HasBody = true, BodyContent = responseXml });
+
+        // Act
+        var result = await strategy.Execute();
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Name.LocalName.ShouldBe("TransformedResponse");
+        verboseOutputs.ShouldContain(o => o.Description == "Request Body Untransformed:");
+        verboseOutputs.ShouldContain(o => o.Description == "Request Body Transformed:");
+        verboseOutputs.ShouldContain(o => o.Description == "Response Body Transformed:");
+    }
+
+    [Fact]
     public async Task Execute_WhenPayloadIsNullAndSchemaValidationEnabled_ThrowsXmlSchemaValidationException()
     {
         // Arrange

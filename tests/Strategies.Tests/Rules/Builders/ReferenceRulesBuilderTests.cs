@@ -78,4 +78,25 @@ public class ReferenceRulesBuilderTests
         result.ShouldBe(builder);
         await Should.NotThrowAsync(() => builder.Validate("Create", "Item", logger, cancellationToken));
     }
+
+    [Fact]
+    public async Task Validate_WhenRuleFailsAndLoggingDisabled_ThrowsReferenceRuleException()
+    {
+        // Arrange
+        var disabledLogger = Substitute.For<ILogger<TestService>>();
+        disabledLogger.IsEnabled(Arg.Any<LogLevel>()).Returns(false);
+
+        var rule = Substitute.For<IReferenceRule>();
+        rule.Description.Returns("Entity must exist");
+        rule.Validator.Returns(_ => Task.FromResult(false));
+
+        builder.Add(rule);
+
+        // Act & Assert
+        var exception = await Should.ThrowAsync<ReferenceRuleException>(() =>
+            builder.Validate("Create", "Item", disabledLogger, cancellationToken));
+
+        exception.Message.ShouldBe("Entity must exist");
+        disabledLogger.DidNotReceiveWithAnyArgs().Log(default, default, default, default, default!);
+    }
 }

@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Schemas.Builders;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Xml;
 using System.Xml.Schema;
@@ -12,7 +11,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Schemas.Builders;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Schemas.Resolvers;
 
-[ExcludeFromCodeCoverage]
 public class SoapSchemaBuilder : ISoapSchemaBuilder
 {
     private readonly SoapSchemaXmlResolver soapSchemaXmlResolver = new();

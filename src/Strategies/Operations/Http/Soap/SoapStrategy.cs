@@ -19,7 +19,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Schemas.Builders;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Serializer;
 
-[ExcludeFromCodeCoverage]
 public sealed class SoapStrategy<TService>
     : HttpStrategyBase<TService, ISoapStrategy<TService>>,
         ISoapStrategy<TService>

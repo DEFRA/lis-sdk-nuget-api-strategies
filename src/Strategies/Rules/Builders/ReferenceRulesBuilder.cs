@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
@@ -13,7 +12,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
 using Microsoft.Extensions.Logging;
 
-[ExcludeFromCodeCoverage]
 public partial class ReferenceRulesBuilder<TService> : IReferenceRulesBuilder<TService>
     where TService : class
 {

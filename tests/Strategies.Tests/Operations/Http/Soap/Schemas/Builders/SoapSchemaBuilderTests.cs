@@ -329,7 +329,7 @@ public class SoapSchemaBuilderTests
     {
         // Arrange
         var builder = new SoapSchemaBuilder();
-        var relativePath = Path.Combine(@"TestFramework\Data\Soap\Schemas", "FileTestSchema.xsd");
+        const string relativePath = @"TestFramework/Data/Soap/Schemas/FileTestSchema.xsd";
 
         // Act
         var returnedBuilder = builder.Add(relativePath);

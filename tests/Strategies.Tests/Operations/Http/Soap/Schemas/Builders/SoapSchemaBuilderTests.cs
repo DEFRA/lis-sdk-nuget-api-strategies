@@ -18,7 +18,7 @@ public class SoapSchemaBuilderTests
 
     private static readonly string FileSchemaFilePath = Path.Combine(
         AppContext.BaseDirectory,
-        "TestFramework/TestData/Soap/Schemas/FileTestSchema.Xsd");
+        "TestFramework/TestData/Soap/Schemas/FileTestSchema.xsd");
 
     [Fact]
     public void Build_WithoutSchemas_ShouldThrowSoapSchemaException()

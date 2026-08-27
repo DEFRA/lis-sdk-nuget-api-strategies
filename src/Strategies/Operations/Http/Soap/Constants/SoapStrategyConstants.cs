@@ -4,9 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Constants;
 
-using System.Diagnostics.CodeAnalysis;
-
-[ExcludeFromCodeCoverage]
 internal static class SoapStrategyConstants
 {
     public static class Errors

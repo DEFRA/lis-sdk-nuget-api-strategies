@@ -16,7 +16,7 @@
 
   <!-- Local Version Information-->
   <PropertyGroup>
-    <Version>0.4.0-prerelease.1</Version>
+    <Version>0.5.0-prerelease.1</Version>
   </PropertyGroup>
 
   <!-- Packages-->
@@ -32,5 +32,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Defra.Livestock.Sdk.Api.Strategies.Tests" />
   </ItemGroup>
 </Project>

@@ -4,11 +4,9 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Serializer;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 
-[ExcludeFromCodeCoverage]
 public static class SoapSerializer
 {
     private const string FailedToSerializeToXElement = "Failed to serialize object to XElement";

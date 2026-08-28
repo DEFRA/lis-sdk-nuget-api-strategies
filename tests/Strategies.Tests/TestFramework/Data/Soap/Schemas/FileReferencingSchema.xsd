@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/file-referencing"
+           xmlns:ref="http://example.com/test"
+           xmlns="http://example.com/file-referencing"
+           elementFormDefault="qualified">
+  <xs:import namespace="http://example.com/test" schemaLocation="FileTestSchema.xsd" />
+  <xs:element name="ReferencingPayload">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="ref:TestElement" />
+        <xs:element ref="ref:Payload" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

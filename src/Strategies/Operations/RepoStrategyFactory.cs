@@ -4,14 +4,12 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations;
 
-using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories;
 
-[ExcludeFromCodeCoverage]
 public sealed class RepoStrategyFactory<TService> : StrategyFactoryBase<TService, IRepoStrategyFactory<TService>>,
     IRepoStrategyFactory<TService>
     where TService : class

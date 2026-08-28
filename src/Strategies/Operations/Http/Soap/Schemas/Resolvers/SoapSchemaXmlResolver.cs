@@ -4,12 +4,10 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Schemas.Resolvers;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Reflection;
 using System.Xml;
 
-[ExcludeFromCodeCoverage]
 internal sealed class SoapSchemaXmlResolver : XmlResolver
 {
     private readonly XmlUrlResolver fallbackResolver = new();

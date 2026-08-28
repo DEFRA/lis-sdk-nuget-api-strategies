@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Base;
 
-using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 
@@ -13,7 +12,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 /// </summary>
 /// <typeparam name="TService">The type of the service class that is consuming the derived builder.</typeparam>
 /// <typeparam name="TParent">The type of the derived builder.</typeparam>
-[ExcludeFromCodeCoverage]
 public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TService, TParent>,
     IHttpStrategy<TService, TParent>
     where TService : class

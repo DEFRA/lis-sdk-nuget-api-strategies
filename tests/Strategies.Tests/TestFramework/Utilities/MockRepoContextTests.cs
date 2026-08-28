@@ -307,14 +307,16 @@ public class MockRepoContextTests
         context.Calls.LastCreateResult.ShouldBe(modifiedEntity);
     }
 
-    private class GuidEntity
+    // ReSharper disable once MemberCanBePrivate.Global
+    public class GuidEntity
     {
         public Guid Id { get; init; }
 
         public string Name { get; init; } = string.Empty;
     }
 
-    private class ReadOnlyGuidEntity
+    // ReSharper disable once MemberCanBePrivate.Global
+    public class ReadOnlyGuidEntity
     {
         public Guid Id { get; } = Guid.Empty;
     }

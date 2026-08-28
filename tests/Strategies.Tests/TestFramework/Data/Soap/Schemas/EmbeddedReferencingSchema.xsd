@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/embedded-referencing"
+           xmlns:ref="http://example.com/embedded-test"
+           xmlns="http://example.com/embedded-referencing"
+           elementFormDefault="qualified">
+  <xs:import namespace="http://example.com/embedded-test" schemaLocation="EmbeddedTestSchema.xsd" />
+  <xs:element name="EmbeddedReferencingPayload">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="ref:EmbeddedTestElement" />
+        <xs:element ref="ref:Payload" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

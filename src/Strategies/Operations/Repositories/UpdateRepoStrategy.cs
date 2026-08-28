@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Repositories;
@@ -16,7 +15,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
 
-[ExcludeFromCodeCoverage]
 public sealed class UpdateRepoStrategy<TService, TEntity>
     : RepoStrategyBase<TService, IUpdateRepoStrategy<TService, TEntity>>,
         IUpdateRepoStrategy<TService, TEntity>

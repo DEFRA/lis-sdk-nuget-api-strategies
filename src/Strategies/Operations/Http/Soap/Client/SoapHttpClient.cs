@@ -4,7 +4,6 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Client;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -17,7 +16,6 @@ using Microsoft.Extensions.Logging;
 /// <summary>
 /// Soap HTTP Client.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed partial class SoapHttpClient : ISoapHttpClient
 {
     private static readonly XNamespace SoapNs = "http://schemas.xmlsoap.org/soap/envelope/";

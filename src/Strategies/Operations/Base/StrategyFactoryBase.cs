@@ -4,12 +4,10 @@
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 
-using System.Diagnostics.CodeAnalysis;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Base;
 using Microsoft.Extensions.Logging;
 
-[ExcludeFromCodeCoverage]
 public abstract class StrategyFactoryBase<TService, TParent> : IStrategyFactory<TService, TParent>
     where TService : class
     where TParent : class

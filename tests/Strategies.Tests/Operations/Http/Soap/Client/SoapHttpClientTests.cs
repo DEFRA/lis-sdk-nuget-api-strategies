@@ -38,6 +38,7 @@ public class SoapHttpClientTests
         client.WithHeader("X-Custom", "Value").ShouldBe(client);
         client.WithHeader("X-Custom", "OverwrittenValue").ShouldBe(client);
         client.WithXmlDeclaration(true).ShouldBe(client);
+        client.WithTimeout(5000).ShouldBe(client);
         client.WithVerboseOutput((_, _) => { }).ShouldBe(client);
     }
 
@@ -464,5 +465,29 @@ public class SoapHttpClientTests
             x => x.HasSoapFault.ShouldBeTrue(),
             x => x.SoapFaultCode.ShouldBeNull(),
             x => x.SoapFaultDetails.ShouldBeNull());
+    }
+
+    [Fact]
+    public async Task PostAsync_WhenTimeoutOccurs_ShouldCancelRequest()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler(async (_, ct) =>
+        {
+            await Task.Delay(500, ct);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml")
+            .WithTimeout(50);
+
+        // Act & Assert
+        await Should.ThrowAsync<OperationCanceledException>(() =>
+            client.PostAsync("soap/service", new XElement("TestRequest")));
     }
 }

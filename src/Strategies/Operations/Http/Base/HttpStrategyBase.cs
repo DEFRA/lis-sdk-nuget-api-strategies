@@ -24,6 +24,8 @@ public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TServic
 
     protected string? MediaType { get; private set; }
 
+    protected int? TimeoutMs { get; private set; }
+
     public TParent WithApiDescription(string apiDescription)
     {
         TargetDescription = apiDescription;
@@ -49,11 +51,11 @@ public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TServic
         return GetParentBuilder();
     }
 
-    public TParent WithMediaType(string mediaType)
+    public TParent WithApiKey(string apiKey)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(mediaType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
 
-        MediaType = mediaType;
+        Headers["x-api-key"] = apiKey;
 
         return GetParentBuilder();
     }
@@ -66,6 +68,22 @@ public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TServic
         var encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
 
         Headers["Authorization"] = $"Basic {encoded}";
+
+        return GetParentBuilder();
+    }
+
+    public TParent WithMediaType(string mediaType)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(mediaType);
+
+        MediaType = mediaType;
+
+        return GetParentBuilder();
+    }
+
+    public TParent WithTimeout(int timeoutMs)
+    {
+        TimeoutMs = timeoutMs;
 
         return GetParentBuilder();
     }

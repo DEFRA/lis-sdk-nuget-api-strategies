@@ -31,6 +31,8 @@ public class HttpStrategyFactoryBaseTests
         factory.WithDefaultBaseUrl("https://example.com/api").ShouldBe(factory);
         factory.WithDefaultMediaType("application/json").ShouldBe(factory);
         factory.WithDefaultBasicAuth("admin", "pass").ShouldBe(factory);
+        factory.WithDefaultApiKey("api-key").ShouldBe(factory);
+        factory.WithDefaultTimeout(3000).ShouldBe(factory);
         factory.WithDefaultVerboseOutput(verboseAction).ShouldBe(factory);
 
         factory.GetDefaultVerboseOutputAction().ShouldBe(verboseAction);
@@ -52,6 +54,19 @@ public class HttpStrategyFactoryBaseTests
         Should.Throw<ArgumentException>(() => factory.WithDefaultBasicAuth(username!, password!));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithDefaultApiKey_WithInvalidInputs_ShouldThrowArgumentException(string? apiKey)
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => factory.WithDefaultApiKey(apiKey!));
+    }
+
     [Fact]
     public void AttachHttpDefaultsToBuilder_WithAllDefaults_ShouldAttachAllDefaultsToBuilder()
     {
@@ -65,7 +80,9 @@ public class HttpStrategyFactoryBaseTests
             .WithDefaultApiDescription("Default Api")
             .WithDefaultBaseUrl("https://example.com")
             .WithDefaultMediaType("application/json")
-            .WithDefaultBasicAuth("admin", "secret123");
+            .WithDefaultBasicAuth("admin", "secret123")
+            .WithDefaultApiKey("api-key-value")
+            .WithDefaultTimeout(4500);
 
         // Act
         factory.CallAttachHttpDefaultsToBuilder(strategy);
@@ -77,6 +94,8 @@ public class HttpStrategyFactoryBaseTests
 
         var expectedAuth = $"Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes("admin:secret123"))}";
         strategy.GetHeaders()["Authorization"].ShouldBe(expectedAuth);
+        strategy.GetHeaders()["x-api-key"].ShouldBe("api-key-value");
+        strategy.GetTimeoutMs().ShouldBe(4500);
     }
 
     [Fact]
@@ -94,5 +113,6 @@ public class HttpStrategyFactoryBaseTests
         strategy.GetBaseUrl().ShouldBeNull();
         strategy.GetMediaType().ShouldBeNull();
         strategy.GetHeaders().ShouldBeEmpty();
+        strategy.GetTimeoutMs().ShouldBeNull();
     }
 }

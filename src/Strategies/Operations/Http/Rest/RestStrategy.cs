@@ -267,6 +267,11 @@ public sealed class RestStrategy<TService>
             .WithBaseUrl(BaseUrl)
             .WithMediaType(MediaType);
 
+        if (TimeoutMs != null)
+        {
+            restHttpClient.WithTimeout(TimeoutMs.Value);
+        }
+
         foreach (var header in Headers)
         {
             restHttpClient.WithHeader(header.Key, header.Value);

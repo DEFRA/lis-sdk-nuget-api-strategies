@@ -45,6 +45,8 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
 
     private bool IncludeXmlDeclaration { get; set; }
 
+    private int? TimeoutMs { get; set; }
+
     public ISoapHttpClient WithVerboseOutput(Action<string, string?>? verboseOutputAction)
     {
         VerboseOutputAction = verboseOutputAction;
@@ -96,6 +98,13 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
         return this;
     }
 
+    public ISoapHttpClient WithTimeout(int timeoutMs)
+    {
+        TimeoutMs = timeoutMs;
+
+        return this;
+    }
+
     public async Task<SoapResponse> PostAsync(
         string relativeUrl,
         XElement payload,
@@ -116,6 +125,14 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             throw new InvalidOperationException("Media type must be set before making a soap request.");
         }
 
+        using var timeoutCts = TimeoutMs.HasValue
+            ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value))
+            : null;
+        using var linkedCts = timeoutCts != null
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
+            : null;
+        var effectiveCancellationToken = linkedCts?.Token ?? cancellationToken;
+
         var absoluteUrl = new Uri($"{BaseUrl}/{relativeUrl}", UriKind.Absolute);
 
         var soapEnvelope = BuildSoapEnvelope(payload);
@@ -124,7 +141,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             ? new StringContent(GetSoapEnvelopeWithXmlDeclaration(soapEnvelope), Encoding.UTF8, MediaType)
             : new StringContent(soapEnvelope.ToString(), Encoding.UTF8, MediaType);
 
-        EmmitVerboseOutput("Created Soap Envelope:", await httpContent.ReadAsStringAsync(cancellationToken));
+        EmmitVerboseOutput("Created Soap Envelope:", await httpContent.ReadAsStringAsync(effectiveCancellationToken));
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, absoluteUrl);
 
@@ -143,7 +160,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
 
         EmmitVerboseOutput("Sending SOAP Request to:", absoluteUrl.ToString());
 
-        var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+        var httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
 
         try
         {
@@ -154,7 +171,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             throw new SoapResponseException($"HTTP Response Error: {ex.Message}", ex);
         }
 
-        var soapResponse = await ExtractSoapResponse(httpResponse, cancellationToken);
+        var soapResponse = await ExtractSoapResponse(httpResponse, effectiveCancellationToken);
 
         LogSuccessfullyCalledSoapEndpoint(logger, absoluteUrl.ToString());
 

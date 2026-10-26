@@ -38,6 +38,8 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
     private string? MediaType { get; set; }
 
+    private int? TimeoutMs { get; set; }
+
     public IRestHttpClient WithVerboseOutput(Action<string, string?>? verboseOutputAction)
     {
         VerboseOutputAction = verboseOutputAction;
@@ -79,6 +81,13 @@ public sealed partial class RestHttpClient : IRestHttpClient
         return this;
     }
 
+    public IRestHttpClient WithTimeout(int timeoutMs)
+    {
+        TimeoutMs = timeoutMs;
+
+        return this;
+    }
+
     public async Task<RestResponse> SendAsync(
         HttpMethod httpMethod,
         string? relativeUrl,
@@ -94,6 +103,14 @@ public sealed partial class RestHttpClient : IRestHttpClient
         {
             throw new InvalidOperationException("Media type must be set before making a rest request.");
         }
+
+        using var timeoutCts = TimeoutMs.HasValue
+            ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value))
+            : null;
+        using var linkedCts = timeoutCts != null
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
+            : null;
+        var effectiveCancellationToken = linkedCts?.Token ?? cancellationToken;
 
         var urlBuilder = new StringBuilder();
         var trimmedBaseUrl = BaseUrl.TrimEnd('/');
@@ -144,7 +161,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
         try
         {
-            httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+            httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
         }
         catch (Exception ex)
         {
@@ -160,7 +177,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
             throw new RestResponseException($"HTTP Response Error: {ex.Message}", ex);
         }
 
-        var restResponse = await ExtractRestResponse(httpResponse, cancellationToken);
+        var restResponse = await ExtractRestResponse(httpResponse, effectiveCancellationToken);
 
         LogSuccessfullyCalledRestEndpoint(logger, httpMethod.Method, absoluteUrl.ToString());
 

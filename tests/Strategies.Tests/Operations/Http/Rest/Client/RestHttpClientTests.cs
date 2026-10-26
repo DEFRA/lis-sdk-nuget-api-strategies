@@ -35,6 +35,7 @@ public class RestHttpClientTests
         client.WithHeader("X-Custom", "Value").ShouldBe(client);
         client.WithHeader("X-Custom", "OverwrittenValue").ShouldBe(client);
         client.WithQueryParameter("page", "1").ShouldBe(client);
+        client.WithTimeout(5000).ShouldBe(client);
         client.WithVerboseOutput((_, _) => { }).ShouldBe(client);
     }
 
@@ -336,5 +337,26 @@ public class RestHttpClientTests
         var ex = await Should.ThrowAsync<RestResponseException>(() => client.SendAsync(HttpMethod.Get, "items"));
         ex.Message.ShouldContain("HTTP Response Error:");
         ex.InnerException.ShouldBeOfType<HttpRequestException>();
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenTimeoutOccurs_ThrowsRestRequestExceptionWrappingOperationCanceledException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler(async (_, ct) =>
+        {
+            await Task.Delay(500, ct);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json")
+            .WithTimeout(50);
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
+        ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
     }
 }

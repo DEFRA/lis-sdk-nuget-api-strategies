@@ -6,17 +6,28 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Handlers;
 
 public sealed class TestHttpMessageHandler : HttpMessageHandler
 {
-    private readonly Func<HttpRequestMessage, HttpResponseMessage> handler;
+    private readonly Func<HttpRequestMessage, HttpResponseMessage>? handler;
+    private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? asyncCancellableHandler;
 
     public TestHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler)
     {
         this.handler = handler;
     }
 
+    public TestHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> asyncCancellableHandler)
+    {
+        this.asyncCancellableHandler = asyncCancellableHandler;
+    }
+
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        return Task.FromResult(handler(request));
+        if (asyncCancellableHandler != null)
+        {
+            return asyncCancellableHandler(request, cancellationToken);
+        }
+
+        return Task.FromResult(handler!(request));
     }
 }

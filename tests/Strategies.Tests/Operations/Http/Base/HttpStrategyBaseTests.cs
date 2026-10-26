@@ -143,4 +143,45 @@ public class HttpStrategyBaseTests
         // Act & Assert
         Should.Throw<ArgumentException>(() => strategy.WithBasicAuth(username!, password!));
     }
+
+    [Fact]
+    public void WithApiKey_WithValidKey_ShouldSetApiKeyHeaderAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey("my-secret-key");
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders()["x-api-key"].ShouldBe("my-secret-key");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithApiKey_WithInvalidKey_ShouldThrowArgumentException(string? apiKey)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => strategy.WithApiKey(apiKey!));
+    }
+
+    [Fact]
+    public void WithTimeout_ShouldSetTimeoutMsAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithTimeout(5000);
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetTimeoutMs().ShouldBe(5000);
+    }
 }

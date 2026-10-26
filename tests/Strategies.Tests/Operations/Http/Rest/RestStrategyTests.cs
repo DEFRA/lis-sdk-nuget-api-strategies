@@ -38,6 +38,7 @@ public class RestStrategyTests
         restHttpClient.WithMediaType(Arg.Any<string>()).Returns(restHttpClient);
         restHttpClient.WithHeader(Arg.Any<string>(), Arg.Any<string>()).Returns(restHttpClient);
         restHttpClient.WithQueryParameter(Arg.Any<string>(), Arg.Any<string>()).Returns(restHttpClient);
+        restHttpClient.WithTimeout(Arg.Any<int>()).Returns(restHttpClient);
     }
 
     [Fact]
@@ -64,6 +65,7 @@ public class RestStrategyTests
         strategy.WithPayload(new TestEntity { Id = "1", Name = "Test" }).ShouldBe(strategy);
         strategy.WithPayload(() => new TestEntity { Id = "1", Name = "Test" }).ShouldBe(strategy);
         strategy.WithJsonSerializerOptions(options).ShouldBe(strategy);
+        strategy.WithTimeout(5000).ShouldBe(strategy);
         strategy.WithVerboseOutput((_, _) => { }).ShouldBe(strategy);
     }
 
@@ -468,6 +470,57 @@ public class RestStrategyTests
         // Assert
         logger.ShouldHaveReceived(LogLevel.Information, "Executing get user [user api] by operator ");
         logger.ShouldHaveReceived(LogLevel.Information, "Successfully executed get user [user api] by operator ");
+    }
+
+    [Fact]
+    public async Task Execute_WhenTimeoutConfigured_PassesTimeoutToHttpClient()
+    {
+        // Arrange
+        var strategy = ConfigureValidStrategy(restHttpClient, logger)
+            .WithTimeout(2500);
+
+        restHttpClient.SendAsync(
+                Arg.Any<HttpMethod>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RestResponse
+            {
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"John\"}",
+            }));
+
+        // Act
+        await strategy.Execute<TestEntity>();
+
+        // Assert
+        restHttpClient.Received(1).WithTimeout(2500);
+    }
+
+    [Fact]
+    public async Task Execute_WhenTimeoutNotConfigured_DoesNotPassTimeoutToHttpClient()
+    {
+        // Arrange
+        var strategy = ConfigureValidStrategy(restHttpClient, logger);
+
+        restHttpClient.SendAsync(
+                Arg.Any<HttpMethod>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new RestResponse
+            {
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"John\"}",
+            }));
+
+        // Act
+        await strategy.Execute<TestEntity>();
+
+        // Assert
+        restHttpClient.DidNotReceive().WithTimeout(Arg.Any<int>());
     }
 
     private static IRestStrategy<TestService> ConfigureValidStrategy(

@@ -227,31 +227,29 @@ public class RestHttpClientTests
     }
 
     [Fact]
-    public async Task SendAsync_WithoutRelativeUrl_UsesBaseUrlDirectly()
+    public async Task SendAsync_WithoutPayload_ExecutesSuccessfullyWithoutEmittingPayloadVerboseLog()
     {
         // Arrange
-        HttpRequestMessage? capturedRequest = null;
-        var handler = new TestHttpMessageHandler(req =>
+        var verboseLogs = new List<(string, string?)>();
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
-            capturedRequest = req;
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
-            };
+            Content = new StringContent("{}", Encoding.UTF8, "application/json"),
         });
 
         var httpClient = new HttpClient(handler);
         var client = new RestHttpClient(httpClient, logger);
 
         client.WithBaseUrl("https://example.com/api")
-            .WithMediaType("application/json");
+            .WithMediaType("application/json")
+            .WithVerboseOutput((desc, data) => verboseLogs.Add((desc, data)));
 
         // Act
-        await client.SendAsync(HttpMethod.Get, null, null, TestContext.Current.CancellationToken);
+        var response = await client.SendAsync(HttpMethod.Get, "items", null, TestContext.Current.CancellationToken);
 
         // Assert
-        capturedRequest.ShouldNotBeNull();
-        capturedRequest.RequestUri.ShouldBe(new Uri("https://example.com/api"));
+        response.ShouldNotBeNull();
+        verboseLogs.ShouldNotContain(x => x.Item1 == "Created Request Payload:");
+        verboseLogs.ShouldContain(x => x.Item1 == "Sending GET Request to:" && x.Item2 == "https://example.com/api/items");
     }
 
     [Fact]
@@ -377,5 +375,112 @@ public class RestHttpClientTests
         // Act & Assert
         var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
         ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenOperationCanceledExceptionWithTimeoutInnerOccurs_LogsTimeoutAndThrowsRestRequestException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler((_, _) =>
+            throw new OperationCanceledException("Timed out", new TimeoutException("Timeout occurred")));
+
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
+
+        ex.Message.ShouldContain("HTTP Request Error: Timed out");
+        ex.InnerException.ShouldBeOfType<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request timed out after 0 milliseconds");
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenOperationCanceledExceptionByAnotherSourceOccurs_LogsCancellationAndThrowsRestRequestException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler((_, _) =>
+            throw new OperationCanceledException("Cancelled by external source"));
+
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
+
+        ex.Message.ShouldContain("HTTP Request Error: Cancelled by external source");
+        ex.InnerException.ShouldBeOfType<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request was cancelled by another source");
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenCallerCancellationTokenCancelled_LogsCancellationAndThrowsRestRequestException()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var handler = new TestHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items", null, cts.Token));
+        ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Caller provided cancellation token was cancelled");
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenGenericExceptionOccurs_ThrowsRestRequestException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler((_, _) =>
+            throw new InvalidOperationException("Generic rest failure"));
+
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
+
+        ex.Message.ShouldContain("HTTP Request Error: Generic rest failure");
+        ex.InnerException.ShouldBeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenResponseContentIsNull_ReturnsRestResponseWithNullContent()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = null,
+        });
+
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json");
+
+        // Act
+        var response = await client.SendAsync(HttpMethod.Get, "items");
+
+        // Assert
+        response.ShouldNotBeNull();
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.HasContent.ShouldBeFalse();
+        response.Content.ShouldBe(string.Empty);
     }
 }

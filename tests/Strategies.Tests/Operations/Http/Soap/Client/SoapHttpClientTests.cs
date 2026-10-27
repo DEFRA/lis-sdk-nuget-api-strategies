@@ -513,4 +513,175 @@ public class SoapHttpClientTests
             client.PostAsync("soap/service", new XElement("TestRequest")));
         ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task PostAsync_WhenOperationCanceledExceptionWithTimeoutInnerOccurs_LogsTimeoutAndThrowsSoapRequestException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler((_, _) =>
+            throw new OperationCanceledException("Timed out", new TimeoutException("Timeout occurred")));
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<SoapRequestException>(() =>
+            client.PostAsync("soap/service", new XElement("TestRequest")));
+
+        ex.Message.ShouldContain("HTTP Request Error: Timed out");
+        ex.InnerException.ShouldBeOfType<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request timed out after 0 milliseconds");
+    }
+
+    [Fact]
+    public async Task PostAsync_WhenOperationCanceledExceptionByAnotherSourceOccurs_LogsCancellationAndThrowsSoapRequestException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler((_, _) =>
+            throw new OperationCanceledException("Cancelled by external source"));
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<SoapRequestException>(() =>
+            client.PostAsync("soap/service", new XElement("TestRequest")));
+
+        ex.Message.ShouldContain("HTTP Request Error: Cancelled by external source");
+        ex.InnerException.ShouldBeOfType<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request was cancelled by another source");
+    }
+
+    [Fact]
+    public async Task PostAsync_WhenGenericExceptionOccurs_ThrowsSoapRequestException()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler((_, _) =>
+            throw new InvalidOperationException("Fatal networking fault"));
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<SoapRequestException>(() =>
+            client.PostAsync("soap/service", new XElement("TestRequest")));
+
+        ex.Message.ShouldContain("HTTP Request Error: Fatal networking fault");
+        ex.InnerException.ShouldBeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task PostAsync_WithoutXmlDeclaration_SendsSoapEnvelopeWithoutXmlDeclaration()
+    {
+        // Arrange
+        string? capturedBody = null;
+        var handler = new TestHttpMessageHandler(async (req, ct) =>
+        {
+            if (req.Content != null)
+            {
+                capturedBody = await req.Content.ReadAsStringAsync(ct);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><TestResponse/></soap:Body></soap:Envelope>",
+                    Encoding.UTF8,
+                    "text/xml"),
+            };
+        });
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml")
+            .WithXmlDeclaration(false);
+
+        // Act
+        var response = await client.PostAsync("soap/service", new XElement("TestRequest"));
+
+        // Assert
+        response.ShouldNotBeNull();
+        capturedBody.ShouldNotBeNull();
+        capturedBody.ShouldNotStartWith("<?xml");
+    }
+
+    [Fact]
+    public async Task PostAsync_WithNonSeekableStream_ExtractsResponseSuccessfully()
+    {
+        // Arrange
+        const string soapResponseBody =
+            "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><CustomResult>123</CustomResult></soap:Body></soap:Envelope>";
+
+        var customContent = new StreamContent(new NonSeekableStream(new MemoryStream(Encoding.UTF8.GetBytes(soapResponseBody))));
+        customContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/xml");
+
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = customContent,
+        });
+
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act
+        var response = await client.PostAsync("soap/service", new XElement("TestRequest"));
+
+        // Assert
+        response.ShouldNotBeNull();
+        response.HasContent.ShouldBeTrue();
+        response.HasBody.ShouldBeTrue();
+        response.BodyContent.ShouldNotBeNull();
+        response.BodyContent!.Name.LocalName.ShouldBe("CustomResult");
+    }
+
+    private sealed class NonSeekableStream(Stream inner) : Stream
+    {
+        public override bool CanRead => inner.CanRead;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => inner.CanWrite;
+
+        public override long Length => inner.Length;
+
+        public override long Position
+        {
+            get => inner.Position;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() => inner.Flush();
+
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => inner.SetLength(value);
+
+        public override void Write(byte[] buffer, int offset, int count) => inner.Write(buffer, offset, count);
+    }
 }

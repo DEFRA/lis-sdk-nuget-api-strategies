@@ -11,6 +11,7 @@ using System.Xml.Linq;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Models;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Constants;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -128,9 +129,11 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
         using var timeoutCts = TimeoutMs.HasValue
             ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value))
             : null;
+
         using var linkedCts = timeoutCts != null
             ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
             : null;
+
         var effectiveCancellationToken = linkedCts?.Token ?? cancellationToken;
 
         var absoluteUrl = new Uri($"{BaseUrl}/{relativeUrl}", UriKind.Absolute);
@@ -160,7 +163,36 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
 
         EmmitVerboseOutput("Sending SOAP Request to:", absoluteUrl.ToString());
 
-        var httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
+        HttpResponseMessage httpResponse;
+
+        try
+        {
+            httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
+        }
+        catch (OperationCanceledException ex)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            LogCallerProvidedCancellationTokenCancelled(logger, ex);
+
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+            when (ex.InnerException is TimeoutException)
+        {
+            LogHttpRequestTimeout(logger, httpClient.Timeout.Milliseconds, ex);
+
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogHttpRequestCancelledByAnotherSource(logger, ex);
+
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
 
         try
         {

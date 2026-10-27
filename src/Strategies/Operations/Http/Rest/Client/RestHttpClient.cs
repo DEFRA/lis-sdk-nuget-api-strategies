@@ -10,6 +10,7 @@ using System.Text;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Rest.Models;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Constants;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -107,9 +108,11 @@ public sealed partial class RestHttpClient : IRestHttpClient
         using var timeoutCts = TimeoutMs.HasValue
             ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value))
             : null;
+
         using var linkedCts = timeoutCts != null
             ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
             : null;
+
         var effectiveCancellationToken = linkedCts?.Token ?? cancellationToken;
 
         var urlBuilder = new StringBuilder();
@@ -163,9 +166,29 @@ public sealed partial class RestHttpClient : IRestHttpClient
         {
             httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
         }
+        catch (OperationCanceledException ex)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            LogCallerProvidedCancellationTokenCancelled(logger, ex);
+
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+            when (ex.InnerException is TimeoutException)
+        {
+            LogHttpRequestTimeout(logger, httpClient.Timeout.Milliseconds, ex);
+
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogHttpRequestCancelledByAnotherSource(logger, ex);
+
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
         catch (Exception ex)
         {
-            throw new RestRequestException($"HTTP Request Error: {ex.Message}", ex);
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
 
         try

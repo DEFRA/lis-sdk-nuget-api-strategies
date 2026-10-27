@@ -468,7 +468,29 @@ public class SoapHttpClientTests
     }
 
     [Fact]
-    public async Task PostAsync_WhenTimeoutOccurs_ShouldCancelRequest()
+    public async Task PostAsync_WhenCallerCancellationTokenCancelled_ThrowsSoapRequestExceptionWrappingOperationCanceledException()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var handler = new TestHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        var httpClient = new HttpClient(handler);
+        var client = new SoapHttpClient(httpClient, logger);
+
+        client
+            .WithBaseUrl("https://example.com")
+            .WithSoapAction("urn:test:action")
+            .WithMediaType("text/xml");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<SoapRequestException>(() =>
+            client.PostAsync("soap/service", new XElement("TestRequest"), cts.Token));
+        ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task PostAsync_WhenTimeoutOccurs_ThrowsSoapRequestExceptionWrappingOperationCanceledException()
     {
         // Arrange
         var handler = new TestHttpMessageHandler(async (_, ct) =>
@@ -487,7 +509,8 @@ public class SoapHttpClientTests
             .WithTimeout(50);
 
         // Act & Assert
-        await Should.ThrowAsync<OperationCanceledException>(() =>
+        var ex = await Should.ThrowAsync<SoapRequestException>(() =>
             client.PostAsync("soap/service", new XElement("TestRequest")));
+        ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
     }
 }

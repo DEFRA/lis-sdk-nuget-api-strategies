@@ -340,6 +340,25 @@ public class RestHttpClientTests
     }
 
     [Fact]
+    public async Task SendAsync_WhenCallerCancellationTokenCancelled_ThrowsRestRequestExceptionWrappingOperationCanceledException()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var handler = new TestHttpMessageHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        var httpClient = new HttpClient(handler);
+        var client = new RestHttpClient(httpClient, logger);
+
+        client.WithBaseUrl("https://example.com/api")
+            .WithMediaType("application/json");
+
+        // Act & Assert
+        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items", null, cts.Token));
+        ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task SendAsync_WhenTimeoutOccurs_ThrowsRestRequestExceptionWrappingOperationCanceledException()
     {
         // Arrange

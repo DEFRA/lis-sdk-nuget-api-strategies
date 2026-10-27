@@ -56,6 +56,7 @@ Shared by `SoapStrategyFactory` and `RestStrategyFactory`:
 - `WithDefaultApiKey(string apiKey)` - Sets default API key header (`x-api-key`).
 - `WithDefaultApiKey(Func<bool> expression, string apiKey)` - Sets default API key header (`x-api-key`) conditionally if the expression evaluates to `true`.
 - `WithDefaultBasicAuth(string username, string password)` - Sets default Basic Authentication credentials.
+- `WithDefaultTimeout(int timeoutMs)` - Sets default request timeout in milliseconds.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for request/response logging.
 
 ---
@@ -448,6 +449,7 @@ public class ExternalSoapService
 - `WithDefaultApiKey(string apiKey)` - Sets default API key header (`x-api-key`).
 - `WithDefaultApiKey(Func<bool> expression, string apiKey)` - Sets default API key header (`x-api-key`) conditionally if the expression evaluates to `true`.
 - `WithDefaultBasicAuth(string username, string password)` - Sets default Basic Authentication credentials.
+- `WithDefaultTimeout(int timeoutMs)` - Sets default request timeout in milliseconds.
 - `WithDefaultXmlDeclaration(bool withDefaultXmlDeclaration)` - Sets whether to include the XML declaration.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for payload/response logging.
 
@@ -464,6 +466,7 @@ Created via `_soapFactory.BuildSoapStrategy()`.
 - `WithBasicAuth(string username, string password)` - Sets Basic Authentication credentials on the request header.
 - `WithHeader(string name, string value)` - Adds an HTTP header.
 - `WithMediaType(string mediaType)` - Sets the HTTP Content-Type / Media-Type (e.g., `text/xml`).
+- `WithTimeout(int timeoutMs)` - Sets the request timeout in milliseconds.
 - `WithXmlDeclaration(bool includeXmlDeclaration)` - Configures whether to include XML declaration in request body.
 - `WithApiDescription(string apiDescription)` - Sets the descriptive API name for logging.
 - `WithVerboseOutput(Action<string, string?> verboseOutputAction)` - Registers a callback to receive verbose debug output (raw and transformed request/response XML).
@@ -601,6 +604,7 @@ public class ExternalRestService
 - `WithDefaultApiKey(string apiKey)` - Sets default API key header (`x-api-key`).
 - `WithDefaultApiKey(Func<bool> expression, string apiKey)` - Sets default API key header (`x-api-key`) conditionally if the expression evaluates to `true`.
 - `WithDefaultBasicAuth(string username, string password)` - Sets default Basic Authentication credentials.
+- `WithDefaultTimeout(int timeoutMs)` - Sets default request timeout in milliseconds.
 - `WithDefaultJsonSerializerOptions(JsonSerializerOptions jsonSerializerOptions)` - Sets default JSON serialization options.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for request/response logging.
 
@@ -626,6 +630,7 @@ Created via `_restFactory.BuildRestStrategy()`.
 - `WithBasicAuth(string username, string password)` - Sets Basic Authentication credentials on the request header.
 - `WithHeader(string name, string value)` - Adds an HTTP request header.
 - `WithMediaType(string mediaType)` - Sets the request media type (defaults to `application/json`).
+- `WithTimeout(int timeoutMs)` - Sets the request timeout in milliseconds.
 - `WithApiDescription(string apiDescription)` - Sets the descriptive API name for logging.
 - `WithJsonSerializerOptions(JsonSerializerOptions jsonSerializerOptions)` - Custom JSON serializer options.
 - `WithVerboseOutput(Action<string, string?> verboseOutputAction)` - Registers a callback to receive verbose debug output (raw request/response payload).

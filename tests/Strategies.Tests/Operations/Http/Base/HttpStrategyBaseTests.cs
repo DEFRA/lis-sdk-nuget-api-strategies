@@ -158,6 +158,57 @@ public class HttpStrategyBaseTests
         strategy.GetHeaders()["x-api-key"].ShouldBe("my-secret-key");
     }
 
+    [Fact]
+    public void WithApiKey_WithConditionTrue_ShouldSetApiKeyHeaderAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey(() => true, "my-secret-key");
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders()["x-api-key"].ShouldBe("my-secret-key");
+    }
+
+    [Fact]
+    public void WithApiKey_WithConditionFalse_ShouldNotSetApiKeyHeaderAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey(() => false, "my-secret-key");
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void WithApiKey_WithNullExpression_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => strategy.WithApiKey(null!, "my-secret-key"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithApiKey_WithConditionTrueAndInvalidKey_ShouldThrowArgumentException(string? apiKey)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => strategy.WithApiKey(() => true, apiKey!));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

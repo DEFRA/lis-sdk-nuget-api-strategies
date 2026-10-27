@@ -53,6 +53,8 @@ Shared by `SoapStrategyFactory` and `RestStrategyFactory`:
 - `WithDefaultApiDescription(string entityDescription)` - Sets default API description.
 - `WithDefaultBaseUrl(string baseUrl)` - Sets default base URL.
 - `WithDefaultMediaType(string mediaType)` - Sets default media type.
+- `WithDefaultApiKey(string apiKey)` - Sets default API key header (`x-api-key`).
+- `WithDefaultApiKey(Func<bool> expression, string apiKey)` - Sets default API key header (`x-api-key`) conditionally if the expression evaluates to `true`.
 - `WithDefaultBasicAuth(string username, string password)` - Sets default Basic Authentication credentials.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for request/response logging.
 
@@ -443,6 +445,8 @@ public class ExternalSoapService
 - `WithDefaultServiceUrl(string serviceUrl)` - Sets default service URL / relative path.
 - `WithDefaultSoapAction(string soapAction)` - Sets default SOAP action header value.
 - `WithDefaultMediaType(string mediaType)` - Sets default media type (e.g. `text/xml`).
+- `WithDefaultApiKey(string apiKey)` - Sets default API key header (`x-api-key`).
+- `WithDefaultApiKey(Func<bool> expression, string apiKey)` - Sets default API key header (`x-api-key`) conditionally if the expression evaluates to `true`.
 - `WithDefaultBasicAuth(string username, string password)` - Sets default Basic Authentication credentials.
 - `WithDefaultXmlDeclaration(bool withDefaultXmlDeclaration)` - Sets whether to include the XML declaration.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for payload/response logging.
@@ -455,6 +459,8 @@ Created via `_soapFactory.BuildSoapStrategy()`.
 - `WithBaseUrl(string baseUrl)` - Sets the base URL.
 - `WithServiceUrl(string serviceUrl)` - Sets the service URL / relative endpoint.
 - `WithSoapAction(string soapAction)` - Sets the `SOAPAction` header.
+- `WithApiKey(string apiKey)` - Sets the `x-api-key` header.
+- `WithApiKey(Func<bool> expression, string apiKey)` - Sets the `x-api-key` header conditionally if the expression evaluates to `true`.
 - `WithBasicAuth(string username, string password)` - Sets Basic Authentication credentials on the request header.
 - `WithHeader(string name, string value)` - Adds an HTTP header.
 - `WithMediaType(string mediaType)` - Sets the HTTP Content-Type / Media-Type (e.g., `text/xml`).
@@ -592,6 +598,8 @@ public class ExternalRestService
 - `WithDefaultBaseUrl(string baseUrl)` - Sets default base URL.
 - `WithDefaultResourceUrl(string resourceUrl)` - Sets default resource URL / relative path.
 - `WithDefaultMediaType(string mediaType)` - Sets default media type (defaults to `application/json`).
+- `WithDefaultApiKey(string apiKey)` - Sets default API key header (`x-api-key`).
+- `WithDefaultApiKey(Func<bool> expression, string apiKey)` - Sets default API key header (`x-api-key`) conditionally if the expression evaluates to `true`.
 - `WithDefaultBasicAuth(string username, string password)` - Sets default Basic Authentication credentials.
 - `WithDefaultJsonSerializerOptions(JsonSerializerOptions jsonSerializerOptions)` - Sets default JSON serialization options.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for request/response logging.
@@ -610,6 +618,8 @@ Created via `_restFactory.BuildRestStrategy()`.
 - `WithOptions()` - Sets HTTP method to `OPTIONS`.
 - `WithBaseUrl(string baseUrl)` - Sets/overrides base URL.
 - `WithResourceUrl(string resourceUrl)` - Sets request resource URL / relative path.
+- `WithApiKey(string apiKey)` - Sets the `x-api-key` header.
+- `WithApiKey(Func<bool> expression, string apiKey)` - Sets the `x-api-key` header conditionally if the expression evaluates to `true`.
 - `WithQueryParameter(string name, string value)` - Appends a single query string parameter.
 - `WithQueryParameter(Func<bool> expression, string name, string value)` - Appends a query string parameter conditionally if the expression evaluates to `true`.
 - `WithQueryParameters(IDictionary<string, string> queryParameters)` - Appends multiple query string parameters.

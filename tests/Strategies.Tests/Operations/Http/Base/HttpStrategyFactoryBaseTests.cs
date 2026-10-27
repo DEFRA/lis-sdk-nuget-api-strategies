@@ -6,6 +6,7 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Http.Base;
 
 using System.Text;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Factories;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Strategies;
@@ -32,6 +33,7 @@ public class HttpStrategyFactoryBaseTests
         factory.WithDefaultMediaType("application/json").ShouldBe(factory);
         factory.WithDefaultBasicAuth("admin", "pass").ShouldBe(factory);
         factory.WithDefaultApiKey("api-key").ShouldBe(factory);
+        factory.WithDefaultApiKey(() => true, "conditional-api-key").ShouldBe(factory);
         factory.WithDefaultTimeout(3000).ShouldBe(factory);
         factory.WithDefaultVerboseOutput(verboseAction).ShouldBe(factory);
 
@@ -65,6 +67,102 @@ public class HttpStrategyFactoryBaseTests
 
         // Act & Assert
         Should.Throw<ArgumentException>(() => factory.WithDefaultApiKey(apiKey!));
+    }
+
+    [Fact]
+    public void WithDefaultApiKey_WithConditionTrue_ShouldSetDefaultApiKeyAndReturnParent()
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = factory.WithDefaultApiKey(() => true, "conditional-api-key");
+        factory.CallAttachHttpDefaultsToBuilder(strategy);
+
+        // Assert
+        result.ShouldBe(factory);
+        strategy.GetHeaders()["x-api-key"].ShouldBe("conditional-api-key");
+    }
+
+    [Fact]
+    public void WithDefaultApiKey_WithConditionFalse_ShouldNotSetDefaultApiKeyAndReturnParent()
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = factory.WithDefaultApiKey(() => false, "conditional-api-key");
+        factory.CallAttachHttpDefaultsToBuilder(strategy);
+
+        // Assert
+        result.ShouldBe(factory);
+        strategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void WithDefaultApiKey_WithDynamicCondition_ShouldPassStoredExpressionToBuilder()
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+        var shouldIncludeApiKey = false;
+        factory.WithDefaultApiKey(() => shouldIncludeApiKey, "conditional-api-key");
+
+        var firstStrategy = new TestHttpStrategy();
+        var secondStrategy = new TestHttpStrategy();
+
+        // Act - First attach when condition is false
+        factory.CallAttachHttpDefaultsToBuilder(firstStrategy);
+
+        // Change condition to true
+        shouldIncludeApiKey = true;
+
+        // Act - Second attach when condition is true
+        factory.CallAttachHttpDefaultsToBuilder(secondStrategy);
+
+        // Assert
+        firstStrategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
+        secondStrategy.GetHeaders()["x-api-key"].ShouldBe("conditional-api-key");
+    }
+
+    [Fact]
+    public void AttachHttpDefaultsToBuilder_WithConditionalApiKey_ShouldCallWithApiKeyWithStoredExpression()
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+        Func<bool> condition = () => true;
+        factory.WithDefaultApiKey(condition, "conditional-api-key");
+        var mockStrategy = Substitute.For<IHttpStrategy<TestService, object>>();
+
+        // Act
+        factory.CallAttachHttpDefaultsToBuilder(mockStrategy);
+
+        // Assert
+        mockStrategy.Received(1).WithApiKey(condition, "conditional-api-key");
+    }
+
+    [Fact]
+    public void WithDefaultApiKey_WithNullExpression_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => factory.WithDefaultApiKey(null!, "api-key"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithDefaultApiKey_WithConditionTrueAndInvalidInputs_ShouldThrowArgumentException(string? apiKey)
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => factory.WithDefaultApiKey(() => true, apiKey!));
     }
 
     [Fact]

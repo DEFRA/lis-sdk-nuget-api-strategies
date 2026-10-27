@@ -60,6 +60,19 @@ public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TServic
         return GetParentBuilder();
     }
 
+    public TParent WithApiKey(Func<bool> expression, string apiKey)
+    {
+        ArgumentNullException.ThrowIfNull(expression);
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+
+        if (expression())
+        {
+            WithApiKey(apiKey);
+        }
+
+        return GetParentBuilder();
+    }
+
     public TParent WithBasicAuth(string username, string password)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(username);

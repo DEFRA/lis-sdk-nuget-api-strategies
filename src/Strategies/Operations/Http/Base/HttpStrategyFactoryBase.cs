@@ -52,7 +52,6 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
     public TParent WithDefaultApiKey(Func<bool> expression, string apiKey)
     {
         ArgumentNullException.ThrowIfNull(expression);
-        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
 
         DefaultApiKey = apiKey;
         DefaultApiKeyExpression = expression;
@@ -109,16 +108,13 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
             strategyBuilder.WithMediaType(DefaultMediaType);
         }
 
-        if (DefaultApiKey != null)
+        if (DefaultApiKeyExpression != null)
         {
-            if (DefaultApiKeyExpression != null)
-            {
-                strategyBuilder.WithApiKey(DefaultApiKeyExpression, DefaultApiKey);
-            }
-            else
-            {
-                strategyBuilder.WithApiKey(DefaultApiKey);
-            }
+            strategyBuilder.WithApiKey(DefaultApiKeyExpression, DefaultApiKey!);
+        }
+        else if (DefaultApiKey != null)
+        {
+            strategyBuilder.WithApiKey(DefaultApiKey);
         }
 
         if (DefaultBasicAuthCredentials != null)

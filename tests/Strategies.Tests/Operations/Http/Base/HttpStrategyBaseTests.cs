@@ -213,6 +213,23 @@ public class HttpStrategyBaseTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
+    public void WithApiKey_WithConditionFalseAndInvalidKey_ShouldNotThrowAndNotSetApiKeyHeader(string? apiKey)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey(() => false, apiKey!);
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
     public void WithApiKey_WithInvalidKey_ShouldThrowArgumentException(string? apiKey)
     {
         // Arrange

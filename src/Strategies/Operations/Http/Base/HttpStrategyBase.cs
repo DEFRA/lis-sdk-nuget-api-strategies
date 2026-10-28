@@ -63,10 +63,11 @@ public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TServic
     public TParent WithApiKey(Func<bool> expression, string apiKey)
     {
         ArgumentNullException.ThrowIfNull(expression);
-        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
 
         if (expression())
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+
             WithApiKey(apiKey);
         }
 

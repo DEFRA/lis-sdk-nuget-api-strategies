@@ -190,13 +190,36 @@ public class HttpStrategyFactoryBaseTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void WithDefaultApiKey_WithConditionTrueAndInvalidInputs_ShouldThrowArgumentException(string? apiKey)
+    public void WithDefaultApiKey_WithConditionTrueAndInvalidKey_WhenDefaultsAttached_ShouldThrowArgumentException(string? apiKey)
     {
         // Arrange
         var factory = new TestHttpStrategyFactory();
+        var strategy = new TestHttpStrategy();
 
-        // Act & Assert
-        Should.Throw<ArgumentException>(() => factory.WithDefaultApiKey(() => true, apiKey!));
+        // Act
+        factory.WithDefaultApiKey(() => true, apiKey!);
+
+        // Assert
+        Should.Throw<ArgumentException>(() => factory.CallAttachHttpDefaultsToBuilder(strategy));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithDefaultApiKey_WithConditionFalseAndInvalidKey_WhenDefaultsAttached_ShouldNotThrowAndNotSetApiKeyHeader(string? apiKey)
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = factory.WithDefaultApiKey(() => false, apiKey!);
+        factory.CallAttachHttpDefaultsToBuilder(strategy);
+
+        // Assert
+        result.ShouldBe(factory);
+        strategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
     }
 
     [Fact]

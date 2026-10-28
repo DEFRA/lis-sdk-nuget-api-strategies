@@ -46,8 +46,6 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
 
     private bool IncludeXmlDeclaration { get; set; }
 
-    private int? TimeoutMs { get; set; }
-
     public ISoapHttpClient WithVerboseOutput(Action<string, string?>? verboseOutputAction)
     {
         VerboseOutputAction = verboseOutputAction;
@@ -101,7 +99,10 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
 
     public ISoapHttpClient WithTimeout(int timeoutMs)
     {
-        TimeoutMs = timeoutMs;
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
+        httpClient.Timeout = TimeSpan.FromMilliseconds(timeoutMs);
 
         return this;
     }
@@ -126,16 +127,6 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             throw new InvalidOperationException("Media type must be set before making a soap request.");
         }
 
-        using var timeoutCts = TimeoutMs.HasValue
-            ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value))
-            : null;
-
-        using var linkedCts = timeoutCts != null
-            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
-            : null;
-
-        var effectiveCancellationToken = linkedCts?.Token ?? cancellationToken;
-
         var absoluteUrl = new Uri($"{BaseUrl}/{relativeUrl}", UriKind.Absolute);
 
         var soapEnvelope = BuildSoapEnvelope(payload);
@@ -144,7 +135,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             ? new StringContent(GetSoapEnvelopeWithXmlDeclaration(soapEnvelope), Encoding.UTF8, MediaType)
             : new StringContent(soapEnvelope.ToString(), Encoding.UTF8, MediaType);
 
-        EmmitVerboseOutput("Created Soap Envelope:", await httpContent.ReadAsStringAsync(effectiveCancellationToken));
+        EmmitVerboseOutput("Created Soap Envelope:", await httpContent.ReadAsStringAsync(cancellationToken));
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, absoluteUrl);
 
@@ -164,7 +155,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
 
         try
         {
-            httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
+            httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
         }
         catch (OperationCanceledException ex)
             when (cancellationToken.IsCancellationRequested)
@@ -174,9 +165,9 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
         catch (OperationCanceledException ex)
-            when (ex.InnerException is TimeoutException || timeoutCts?.IsCancellationRequested == true)
+            when (ex.InnerException is TimeoutException)
         {
-            LogHttpRequestTimeout(logger, TimeoutMs ?? httpClient.Timeout.Milliseconds, ex);
+            LogHttpRequestTimeout(logger, (int)httpClient.Timeout.TotalMilliseconds, ex);
 
             throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
@@ -200,7 +191,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             throw new SoapResponseException($"HTTP Response Error: {ex.Message}", ex);
         }
 
-        var soapResponse = await ExtractSoapResponse(httpResponse, effectiveCancellationToken);
+        var soapResponse = await ExtractSoapResponse(httpResponse, cancellationToken);
 
         LogSuccessfullyCalledSoapEndpoint(logger, absoluteUrl.ToString());
 

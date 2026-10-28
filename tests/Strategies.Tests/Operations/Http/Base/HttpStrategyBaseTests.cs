@@ -222,17 +222,35 @@ public class HttpStrategyBaseTests
         Should.Throw<ArgumentException>(() => strategy.WithApiKey(apiKey!));
     }
 
-    [Fact]
-    public void WithTimeout_ShouldSetTimeoutMsAndReturnParent()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5000)]
+    [InlineData(30000)]
+    public void WithTimeout_WithValidTimeout_ShouldSetTimeoutMsAndReturnParent(int timeoutMs)
     {
         // Arrange
         var strategy = new TestHttpStrategy();
 
         // Act
-        var result = strategy.WithTimeout(5000);
+        var result = strategy.WithTimeout(timeoutMs);
 
         // Assert
         result.ShouldBe(strategy);
-        strategy.GetTimeoutMs().ShouldBe(5000);
+        strategy.GetTimeoutMs().ShouldBe(timeoutMs);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-5000)]
+    [InlineData(30001)]
+    [InlineData(50000)]
+    public void WithTimeout_WithInvalidTimeout_ShouldThrowArgumentOutOfRangeException(int invalidTimeout)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithTimeout(invalidTimeout));
     }
 }

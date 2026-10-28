@@ -39,8 +39,6 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
     private string? MediaType { get; set; }
 
-    private int? TimeoutMs { get; set; }
-
     public IRestHttpClient WithVerboseOutput(Action<string, string?>? verboseOutputAction)
     {
         VerboseOutputAction = verboseOutputAction;
@@ -84,7 +82,10 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
     public IRestHttpClient WithTimeout(int timeoutMs)
     {
-        TimeoutMs = timeoutMs;
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
+        httpClient.Timeout = TimeSpan.FromMilliseconds(timeoutMs);
 
         return this;
     }
@@ -104,16 +105,6 @@ public sealed partial class RestHttpClient : IRestHttpClient
         {
             throw new InvalidOperationException("Media type must be set before making a rest request.");
         }
-
-        using var timeoutCts = TimeoutMs.HasValue
-            ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value))
-            : null;
-
-        using var linkedCts = timeoutCts != null
-            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
-            : null;
-
-        var effectiveCancellationToken = linkedCts?.Token ?? cancellationToken;
 
         var urlBuilder = new StringBuilder();
         var trimmedBaseUrl = BaseUrl.TrimEnd('/');
@@ -161,7 +152,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
         try
         {
-            httpResponse = await httpClient.SendAsync(httpRequest, effectiveCancellationToken);
+            httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
         }
         catch (OperationCanceledException ex)
             when (cancellationToken.IsCancellationRequested)
@@ -171,9 +162,9 @@ public sealed partial class RestHttpClient : IRestHttpClient
             throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
         catch (OperationCanceledException ex)
-            when (ex.InnerException is TimeoutException || timeoutCts?.IsCancellationRequested == true)
+            when (ex.InnerException is TimeoutException)
         {
-            LogHttpRequestTimeout(logger, TimeoutMs ?? httpClient.Timeout.Milliseconds, ex);
+            LogHttpRequestTimeout(logger, (int)httpClient.Timeout.TotalMilliseconds, ex);
 
             throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
@@ -197,7 +188,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
             throw new RestResponseException($"HTTP Response Error: {ex.Message}", ex);
         }
 
-        var restResponse = await ExtractRestResponse(httpResponse, effectiveCancellationToken);
+        var restResponse = await ExtractRestResponse(httpResponse, cancellationToken);
 
         LogSuccessfullyCalledRestEndpoint(logger, httpMethod.Method, absoluteUrl.ToString());
 

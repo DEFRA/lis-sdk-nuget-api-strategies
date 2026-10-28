@@ -101,6 +101,40 @@ public class RestHttpClientTests
         Should.Throw<ArgumentException>(() => client.WithQueryParameter(name!, value!));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-5000)]
+    [InlineData(30001)]
+    [InlineData(50000)]
+    public void WithTimeout_WithInvalidValue_ShouldThrowArgumentOutOfRangeException(int invalidTimeout)
+    {
+        // Arrange
+        var httpClient = new HttpClient(new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+        var client = new RestHttpClient(httpClient, logger);
+
+        // Act & Assert
+        Should.Throw<ArgumentOutOfRangeException>(() => client.WithTimeout(invalidTimeout));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5000)]
+    [InlineData(30000)]
+    public void WithTimeout_WithValidValue_ShouldSetTimeoutAndReturnInstance(int timeoutMs)
+    {
+        // Arrange
+        var httpClient = new HttpClient(new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+        var client = new RestHttpClient(httpClient, logger);
+
+        // Act
+        var result = client.WithTimeout(timeoutMs);
+
+        // Assert
+        result.ShouldBe(client);
+        httpClient.Timeout.ShouldBe(TimeSpan.FromMilliseconds(timeoutMs));
+    }
+
     [Fact]
     public async Task SendAsync_WithoutBaseUrl_ShouldThrowInvalidOperationException()
     {
@@ -389,14 +423,15 @@ public class RestHttpClientTests
         var client = new RestHttpClient(httpClient, logger);
 
         client.WithBaseUrl("https://example.com/api")
-            .WithMediaType("application/json");
+            .WithMediaType("application/json")
+            .WithTimeout(2500);
 
         // Act & Assert
         var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
 
         ex.Message.ShouldContain("HTTP Request Error: Timed out");
         ex.InnerException.ShouldBeOfType<OperationCanceledException>();
-        logger.ShouldHaveReceived(LogLevel.Warning, "Http request timed out after 0 milliseconds");
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request timed out after 2500 milliseconds");
     }
 
     [Fact]

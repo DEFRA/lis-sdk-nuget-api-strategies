@@ -96,6 +96,9 @@ public abstract class HttpStrategyBase<TService, TParent> : StrategyBase<TServic
 
     public TParent WithTimeout(int timeoutMs)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
         TimeoutMs = timeoutMs;
 
         return GetParentBuilder();

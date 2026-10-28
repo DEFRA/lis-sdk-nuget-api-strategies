@@ -41,6 +41,40 @@ public class HttpStrategyFactoryBaseTests
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-5000)]
+    [InlineData(30001)]
+    [InlineData(50000)]
+    public void WithDefaultTimeout_WithInvalidTimeout_ShouldThrowArgumentOutOfRangeException(int invalidTimeout)
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+
+        // Act & Assert
+        Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultTimeout(invalidTimeout));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5000)]
+    [InlineData(30000)]
+    public void WithDefaultTimeout_WithValidTimeout_ShouldSetDefaultTimeoutAndReturnParent(int timeoutMs)
+    {
+        // Arrange
+        var factory = new TestHttpStrategyFactory();
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = factory.WithDefaultTimeout(timeoutMs);
+        factory.CallAttachHttpDefaultsToBuilder(strategy);
+
+        // Assert
+        result.ShouldBe(factory);
+        strategy.GetTimeoutMs().ShouldBe(timeoutMs);
+    }
+
+    [Theory]
     [InlineData(null, "pass")]
     [InlineData("", "pass")]
     [InlineData(" ", "pass")]

@@ -76,6 +76,9 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
 
     public TParent WithDefaultTimeout(int timeoutMs)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
         DefaultTimeoutMs = timeoutMs;
         return GetParentFactory();
     }

@@ -375,6 +375,7 @@ public class RestHttpClientTests
         // Act & Assert
         var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items"));
         ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request timed out after 50 milliseconds");
     }
 
     [Fact]

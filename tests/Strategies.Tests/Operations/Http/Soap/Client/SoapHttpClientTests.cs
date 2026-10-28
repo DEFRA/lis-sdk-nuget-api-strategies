@@ -512,6 +512,7 @@ public class SoapHttpClientTests
         var ex = await Should.ThrowAsync<SoapRequestException>(() =>
             client.PostAsync("soap/service", new XElement("TestRequest")));
         ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Http request timed out after 50 milliseconds");
     }
 
     [Fact]

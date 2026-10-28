@@ -177,9 +177,9 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
         catch (OperationCanceledException ex)
-            when (ex.InnerException is TimeoutException)
+            when (ex.InnerException is TimeoutException || timeoutCts?.IsCancellationRequested == true)
         {
-            LogHttpRequestTimeout(logger, httpClient.Timeout.Milliseconds, ex);
+            LogHttpRequestTimeout(logger, TimeoutMs ?? httpClient.Timeout.Milliseconds, ex);
 
             throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }

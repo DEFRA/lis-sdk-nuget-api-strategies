@@ -40,6 +40,8 @@ public class SoapStrategyFactoryTests
         factory.WithDefaultSoapAction("urn:action").ShouldBe(factory);
         factory.WithDefaultMediaType("text/xml").ShouldBe(factory);
         factory.WithDefaultBasicAuth("admin", "secret").ShouldBe(factory);
+        factory.WithDefaultApiKey("api-key").ShouldBe(factory);
+        factory.WithDefaultTimeout(5000).ShouldBe(factory);
         factory.WithDefaultXmlDeclaration(true).ShouldBe(factory);
         factory.WithDefaultVerboseOutput((_, _) => { }).ShouldBe(factory);
     }
@@ -60,6 +62,8 @@ public class SoapStrategyFactoryTests
             .WithDefaultSoapAction("urn:action")
             .WithDefaultMediaType("text/xml")
             .WithDefaultBasicAuth("admin", "secret123")
+            .WithDefaultApiKey("api-key-123")
+            .WithDefaultTimeout(5000)
             .WithDefaultXmlDeclaration(true)
             .WithDefaultVerboseOutput((_, _) => verboseCalled = true);
 
@@ -89,11 +93,17 @@ public class SoapStrategyFactoryTests
 
         typeof(SoapStrategy<TestService>).GetProperty("MediaType", flags)?.GetValue(soapStrategy).ShouldBe("text/xml");
 
+        typeof(SoapStrategy<TestService>).GetProperty("TimeoutMs", flags)?.GetValue(soapStrategy).ShouldBe(5000);
+
         var headers = (Dictionary<string, string>?)typeof(SoapStrategy<TestService>)
             .GetProperty("Headers", flags)?.GetValue(soapStrategy);
+
         headers.ShouldNotBeNull();
+
         var expectedAuth = $"Basic {Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("admin:secret123"))}";
+
         headers["Authorization"].ShouldBe(expectedAuth);
+        headers["x-api-key"].ShouldBe("api-key-123");
 
         typeof(SoapStrategy<TestService>).GetProperty("IncludeXmlDeclaration", flags)?.GetValue(soapStrategy)
             .ShouldBe(true);

@@ -8,6 +8,8 @@ internal static class HttpStrategyConstants
 {
     public static class Errors
     {
+        public const string HttpRequestErrorPrefix = "HTTP Request Error";
+
         public const string ApiDescriptionRequired = "Api description must be provided for this operation";
 
         public const string BaseUrlRequired = "Base url must be provided for this operation";

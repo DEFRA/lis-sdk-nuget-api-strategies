@@ -21,4 +21,6 @@ public sealed class TestHttpStrategy : HttpStrategyBase<TestService, TestHttpStr
     public string? GetMediaType() => MediaType;
 
     public Dictionary<string, string> GetHeaders() => Headers;
+
+    public int? GetTimeoutMs() => TimeoutMs;
 }

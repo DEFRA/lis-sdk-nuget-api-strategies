@@ -376,6 +376,11 @@ public sealed class SoapStrategy<TService>
             .WithMediaType(MediaType)
             .WithXmlDeclaration(IncludeXmlDeclaration);
 
+        if (TimeoutMs != null)
+        {
+            soapHttpClient.WithTimeout(TimeoutMs.Value);
+        }
+
         foreach (var header in Headers)
         {
             soapHttpClient.WithHeader(header.Key, header.Value);

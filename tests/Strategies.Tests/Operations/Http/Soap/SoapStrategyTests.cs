@@ -46,6 +46,7 @@ public class SoapStrategyTests
         soapHttpClient.WithMediaType(Arg.Any<string>()).Returns(soapHttpClient);
         soapHttpClient.WithXmlDeclaration(Arg.Any<bool>()).Returns(soapHttpClient);
         soapHttpClient.WithHeader(Arg.Any<string>(), Arg.Any<string>()).Returns(soapHttpClient);
+        soapHttpClient.WithTimeout(Arg.Any<int>()).Returns(soapHttpClient);
     }
 
     [Fact]
@@ -58,6 +59,7 @@ public class SoapStrategyTests
         strategy.WithServiceUrl("service").ShouldBe(strategy);
         strategy.WithSoapAction("urn:action").ShouldBe(strategy);
         strategy.WithXmlDeclaration(true).ShouldBe(strategy);
+        strategy.WithTimeout(5000).ShouldBe(strategy);
         strategy.WithVerboseOutput((_, _) => { }).ShouldBe(strategy);
         strategy.WithPayload(() => new XElement("payload")).ShouldBe(strategy);
         strategy.WithPayload(new TestEntity { Id = "1", Name = "A" }).ShouldBe(strategy);
@@ -935,6 +937,45 @@ public class SoapStrategyTests
         var ex = await Should.ThrowAsync<System.Xml.Schema.XmlSchemaValidationException>(strategy.Execute);
 
         ex.Message.ShouldBe("Schema validation error: No element was provided for schema validation");
+    }
+
+    [Fact]
+    public async Task Execute_WhenTimeoutConfigured_ShouldPassTimeoutToHttpClient()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+
+        ConfigureValidStrategyWithXElementPayload(strategy);
+        strategy.WithTimeout(4500);
+
+        var responseXml = new XElement("Response");
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(new SoapResponse { HasContent = true, HasBody = true, BodyContent = responseXml });
+
+        // Act
+        await strategy.Execute();
+
+        // Assert
+        soapHttpClient.Received(1).WithTimeout(4500);
+    }
+
+    [Fact]
+    public async Task Execute_WhenTimeoutNotConfigured_ShouldNotPassTimeoutToHttpClient()
+    {
+        // Arrange
+        var strategy = new SoapStrategy<TestService>(soapHttpClient);
+
+        ConfigureValidStrategyWithXElementPayload(strategy);
+
+        var responseXml = new XElement("Response");
+        soapHttpClient.PostAsync("service", Arg.Any<XElement>(), Arg.Any<CancellationToken>())
+            .Returns(new SoapResponse { HasContent = true, HasBody = true, BodyContent = responseXml });
+
+        // Act
+        await strategy.Execute();
+
+        // Assert
+        soapHttpClient.DidNotReceive().WithTimeout(Arg.Any<int>());
     }
 
     private void ConfigureValidStrategyWithXElementPayload(SoapStrategy<TestService> strategy)

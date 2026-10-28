@@ -40,6 +40,8 @@ public class RestStrategyFactoryTests
         factory.WithDefaultResourceUrl("users").ShouldBe(factory);
         factory.WithDefaultMediaType("application/json").ShouldBe(factory);
         factory.WithDefaultBasicAuth("admin", "secret").ShouldBe(factory);
+        factory.WithDefaultApiKey("api-key").ShouldBe(factory);
+        factory.WithDefaultTimeout(3000).ShouldBe(factory);
         factory.WithDefaultJsonSerializerOptions(options).ShouldBe(factory);
         factory.WithDefaultVerboseOutput((_, _) => { }).ShouldBe(factory);
     }
@@ -60,6 +62,8 @@ public class RestStrategyFactoryTests
             .WithDefaultResourceUrl("users")
             .WithDefaultMediaType("application/vnd.api+json")
             .WithDefaultBasicAuth("admin", "secret123")
+            .WithDefaultApiKey("api-key-test")
+            .WithDefaultTimeout(3000)
             .WithDefaultJsonSerializerOptions(options)
             .WithDefaultVerboseOutput((_, _) => verboseCalled = true);
 
@@ -88,11 +92,17 @@ public class RestStrategyFactoryTests
         typeof(RestStrategy<TestService>).GetProperty("MediaType", flags)?.GetValue(restStrategy)
             .ShouldBe("application/vnd.api+json");
 
+        typeof(RestStrategy<TestService>).GetProperty("TimeoutMs", flags)?.GetValue(restStrategy).ShouldBe(3000);
+
         var headers = (Dictionary<string, string>?)typeof(RestStrategy<TestService>)
             .GetProperty("Headers", flags)?.GetValue(restStrategy);
+
         headers.ShouldNotBeNull();
-        var expectedAuth = $"Basic {Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("admin:secret123"))}";
+
+        var expectedAuth = $"Basic {Convert.ToBase64String("admin:secret123"u8.ToArray())}";
+
         headers["Authorization"].ShouldBe(expectedAuth);
+        headers["x-api-key"].ShouldBe("api-key-test");
 
         typeof(RestStrategy<TestService>).GetProperty("JsonSerializerOptions", flags)?.GetValue(restStrategy)
             .ShouldBe(options);

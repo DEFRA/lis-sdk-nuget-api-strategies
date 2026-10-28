@@ -143,4 +143,131 @@ public class HttpStrategyBaseTests
         // Act & Assert
         Should.Throw<ArgumentException>(() => strategy.WithBasicAuth(username!, password!));
     }
+
+    [Fact]
+    public void WithApiKey_WithValidKey_ShouldSetApiKeyHeaderAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey("my-secret-key");
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders()["x-api-key"].ShouldBe("my-secret-key");
+    }
+
+    [Fact]
+    public void WithApiKey_WithConditionTrue_ShouldSetApiKeyHeaderAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey(() => true, "my-secret-key");
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders()["x-api-key"].ShouldBe("my-secret-key");
+    }
+
+    [Fact]
+    public void WithApiKey_WithConditionFalse_ShouldNotSetApiKeyHeaderAndReturnParent()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey(() => false, "my-secret-key");
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void WithApiKey_WithNullExpression_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => strategy.WithApiKey(null!, "my-secret-key"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithApiKey_WithConditionTrueAndInvalidKey_ShouldThrowArgumentException(string? apiKey)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => strategy.WithApiKey(() => true, apiKey!));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithApiKey_WithConditionFalseAndInvalidKey_ShouldNotThrowAndNotSetApiKeyHeader(string? apiKey)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithApiKey(() => false, apiKey!);
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetHeaders().ContainsKey("x-api-key").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithApiKey_WithInvalidKey_ShouldThrowArgumentException(string? apiKey)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentException>(() => strategy.WithApiKey(apiKey!));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5000)]
+    [InlineData(30000)]
+    public void WithTimeout_WithValidTimeout_ShouldSetTimeoutMsAndReturnParent(int timeoutMs)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act
+        var result = strategy.WithTimeout(timeoutMs);
+
+        // Assert
+        result.ShouldBe(strategy);
+        strategy.GetTimeoutMs().ShouldBe(timeoutMs);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-5000)]
+    [InlineData(30001)]
+    [InlineData(50000)]
+    public void WithTimeout_WithInvalidTimeout_ShouldThrowArgumentOutOfRangeException(int invalidTimeout)
+    {
+        // Arrange
+        var strategy = new TestHttpStrategy();
+
+        // Act & Assert
+        Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithTimeout(invalidTimeout));
+    }
 }

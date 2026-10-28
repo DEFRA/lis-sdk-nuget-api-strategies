@@ -11,6 +11,7 @@ using System.Xml.Linq;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Models;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Constants;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -96,6 +97,16 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
         return this;
     }
 
+    public ISoapHttpClient WithTimeout(int timeoutMs)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
+        httpClient.Timeout = TimeSpan.FromMilliseconds(timeoutMs);
+
+        return this;
+    }
+
     public async Task<SoapResponse> PostAsync(
         string relativeUrl,
         XElement payload,
@@ -134,16 +145,42 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
         httpRequest.Headers.Add("SOAPAction", SoapAction);
         httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaType));
 
-        foreach (var header in Headers)
-        {
-            httpRequest.Headers.Add(header.Key, header.Value);
-        }
+        AddCustomHeadersToRequest(httpRequest);
 
         LogCallingSoapEndpoint(logger, absoluteUrl.ToString());
 
         EmmitVerboseOutput("Sending SOAP Request to:", absoluteUrl.ToString());
 
-        var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+        HttpResponseMessage httpResponse;
+
+        try
+        {
+            httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+        }
+        catch (OperationCanceledException ex)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            LogCallerProvidedCancellationTokenCancelled(logger, ex);
+
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+            when (ex.InnerException is TimeoutException)
+        {
+            LogHttpRequestTimeout(logger, (int)httpClient.Timeout.TotalMilliseconds, ex);
+
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogHttpRequestCancelledByAnotherSource(logger, ex);
+
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            throw new SoapRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
 
         try
         {
@@ -240,6 +277,14 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             SoapFaultCode = soapFaultCode,
             SoapFaultDetails = soapFaultDetails,
         };
+    }
+
+    private void AddCustomHeadersToRequest(HttpRequestMessage httpRequest)
+    {
+        foreach (var header in Headers)
+        {
+            httpRequest.Headers.Add(header.Key, header.Value);
+        }
     }
 
     private void EmmitVerboseOutput(string description, string? data)

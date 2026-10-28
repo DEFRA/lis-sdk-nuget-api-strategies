@@ -10,6 +10,7 @@ using System.Text;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Rest.Models;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Constants;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -79,6 +80,16 @@ public sealed partial class RestHttpClient : IRestHttpClient
         return this;
     }
 
+    public IRestHttpClient WithTimeout(int timeoutMs)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
+        httpClient.Timeout = TimeSpan.FromMilliseconds(timeoutMs);
+
+        return this;
+    }
+
     public async Task<RestResponse> SendAsync(
         HttpMethod httpMethod,
         string? relativeUrl,
@@ -131,10 +142,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
         httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaType));
 
-        foreach (var header in Headers)
-        {
-            httpRequest.Headers.Add(header.Key, header.Value);
-        }
+        AddCustomHeadersToRequest(httpRequest);
 
         LogCallingRestEndpoint(logger, httpMethod.Method, absoluteUrl.ToString());
 
@@ -146,9 +154,29 @@ public sealed partial class RestHttpClient : IRestHttpClient
         {
             httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
         }
+        catch (OperationCanceledException ex)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            LogCallerProvidedCancellationTokenCancelled(logger, ex);
+
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+            when (ex.InnerException is TimeoutException)
+        {
+            LogHttpRequestTimeout(logger, (int)httpClient.Timeout.TotalMilliseconds, ex);
+
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogHttpRequestCancelledByAnotherSource(logger, ex);
+
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
+        }
         catch (Exception ex)
         {
-            throw new RestRequestException($"HTTP Request Error: {ex.Message}", ex);
+            throw new RestRequestException($"{HttpStrategyConstants.Errors.HttpRequestErrorPrefix}: {ex.Message}", ex);
         }
 
         try
@@ -194,6 +222,14 @@ public sealed partial class RestHttpClient : IRestHttpClient
             Content = content,
             Headers = httpResponse.Headers,
         };
+    }
+
+    private void AddCustomHeadersToRequest(HttpRequestMessage httpRequest)
+    {
+        foreach (var header in Headers)
+        {
+            httpRequest.Headers.Add(header.Key, header.Value);
+        }
     }
 
     private void EmmitVerboseOutput(string description, string? data)

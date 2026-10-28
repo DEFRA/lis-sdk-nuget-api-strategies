@@ -18,9 +18,15 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
 
     private string? DefaultBaseUrl { get; set; }
 
-    private string? DefaultMediaType { get; set; }
+    private string? DefaultApiKey { get; set; }
+
+    private Func<bool>? DefaultApiKeyExpression { get; set; }
 
     private (string Username, string Password)? DefaultBasicAuthCredentials { get; set; }
+
+    private string? DefaultMediaType { get; set; }
+
+    private int? DefaultTimeoutMs { get; set; }
 
     public TParent WithDefaultApiDescription(string apiDescription)
     {
@@ -34,9 +40,21 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
         return GetParentFactory();
     }
 
-    public TParent WithDefaultMediaType(string mediaType)
+    public TParent WithDefaultApiKey(string apiKey)
     {
-        DefaultMediaType = mediaType;
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+
+        DefaultApiKey = apiKey;
+        DefaultApiKeyExpression = null;
+        return GetParentFactory();
+    }
+
+    public TParent WithDefaultApiKey(Func<bool> expression, string apiKey)
+    {
+        ArgumentNullException.ThrowIfNull(expression);
+
+        DefaultApiKey = apiKey;
+        DefaultApiKeyExpression = expression;
         return GetParentFactory();
     }
 
@@ -46,6 +64,21 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
 
         DefaultBasicAuthCredentials = (username, password);
+        return GetParentFactory();
+    }
+
+    public TParent WithDefaultMediaType(string mediaType)
+    {
+        DefaultMediaType = mediaType;
+        return GetParentFactory();
+    }
+
+    public TParent WithDefaultTimeout(int timeoutMs)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+
+        DefaultTimeoutMs = timeoutMs;
         return GetParentFactory();
     }
 
@@ -75,11 +108,25 @@ public abstract class HttpStrategyFactoryBase<TService, TParent> : StrategyFacto
             strategyBuilder.WithMediaType(DefaultMediaType);
         }
 
+        if (DefaultApiKeyExpression != null)
+        {
+            strategyBuilder.WithApiKey(DefaultApiKeyExpression, DefaultApiKey!);
+        }
+        else if (DefaultApiKey != null)
+        {
+            strategyBuilder.WithApiKey(DefaultApiKey);
+        }
+
         if (DefaultBasicAuthCredentials != null)
         {
             strategyBuilder.WithBasicAuth(
                 DefaultBasicAuthCredentials.Value.Username,
                 DefaultBasicAuthCredentials.Value.Password);
+        }
+
+        if (DefaultTimeoutMs != null)
+        {
+            strategyBuilder.WithTimeout(DefaultTimeoutMs.Value);
         }
     }
 }

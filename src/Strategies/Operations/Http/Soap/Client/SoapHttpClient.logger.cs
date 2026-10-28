@@ -15,6 +15,18 @@ public sealed partial class SoapHttpClient
         "Calling SOAP endpoint '{absoluteUrl}' ...")]
     static partial void LogCallingSoapEndpoint(ILogger<SoapHttpClient> logger, string absoluteUrl);
 
+    [LoggerMessage(LogLevel.Warning,
+        "Caller provided cancellation token was cancelled")]
+    static partial void LogCallerProvidedCancellationTokenCancelled(ILogger<SoapHttpClient> logger, Exception ex);
+
+    [LoggerMessage(LogLevel.Warning,
+        "Http request timed out after {timeout} milliseconds")]
+    static partial void LogHttpRequestTimeout(ILogger<SoapHttpClient> logger, int timeout, Exception ex);
+
+    [LoggerMessage(LogLevel.Warning,
+        "Http request was cancelled by another source")]
+    static partial void LogHttpRequestCancelledByAnotherSource(ILogger<SoapHttpClient> logger, Exception ex);
+
     [LoggerMessage(LogLevel.Information,
         "Successfully called SOAP endpoint '{absoluteUrl}'")]
     static partial void LogSuccessfullyCalledSoapEndpoint(ILogger<SoapHttpClient> logger, string absoluteUrl);

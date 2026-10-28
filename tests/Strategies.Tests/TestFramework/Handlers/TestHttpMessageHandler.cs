@@ -14,7 +14,8 @@ public sealed class TestHttpMessageHandler : HttpMessageHandler
         this.handler = handler;
     }
 
-    public TestHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> asyncCancellableHandler)
+    public TestHttpMessageHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> asyncCancellableHandler)
     {
         this.asyncCancellableHandler = asyncCancellableHandler;
     }
@@ -23,11 +24,8 @@ public sealed class TestHttpMessageHandler : HttpMessageHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        if (asyncCancellableHandler != null)
-        {
-            return asyncCancellableHandler(request, cancellationToken);
-        }
-
-        return Task.FromResult(handler!(request));
+        return asyncCancellableHandler != null
+            ? asyncCancellableHandler(request, cancellationToken)
+            : Task.FromResult(handler!(request));
     }
 }

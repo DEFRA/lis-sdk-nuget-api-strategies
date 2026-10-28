@@ -144,7 +144,8 @@ public class RestStrategyTests
             .WithGet();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(StrategyConstants.Errors.LoggerRequired);
     }
 
@@ -160,7 +161,8 @@ public class RestStrategyTests
             .WithGet();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(StrategyConstants.Errors.CancellationTokenRequired);
     }
 
@@ -176,7 +178,8 @@ public class RestStrategyTests
             .WithGet();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(HttpStrategyConstants.Errors.ApiDescriptionRequired);
     }
 
@@ -192,7 +195,8 @@ public class RestStrategyTests
             .WithGet();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(StrategyConstants.Errors.ActionDescriptionRequired);
     }
 
@@ -208,7 +212,8 @@ public class RestStrategyTests
             .WithGet();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(HttpStrategyConstants.Errors.BaseUrlRequired);
     }
 
@@ -224,7 +229,8 @@ public class RestStrategyTests
             .WithBaseUrl("https://example.com");
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(RestStrategyConstants.Errors.HttpMethodRequired);
     }
 
@@ -235,7 +241,8 @@ public class RestStrategyTests
         var strategy = ConfigureValidStrategy(restHttpClient, logger);
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<string>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<string>);
+
         ex.Message.ShouldBe("Cannot deserialize to String");
     }
 
@@ -248,6 +255,7 @@ public class RestStrategyTests
         // Act & Assert
         var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
             strategy.ExecuteAndTransform<string, TestResult>(_ => new TestResult()));
+
         ex.Message.ShouldBe("Cannot deserialize to String");
     }
 
@@ -264,7 +272,7 @@ public class RestStrategyTests
             .WithRequiresAuthenticatedOperator();
 
         // Act & Assert
-        await Should.ThrowAsync<UnauthorizedAccessException>(() => strategy.Execute<TestEntity>());
+        await Should.ThrowAsync<UnauthorizedAccessException>(strategy.Execute<TestEntity>);
     }
 
     [Fact]
@@ -275,7 +283,8 @@ public class RestStrategyTests
             .WithRequiresAuthenticatedOperator();
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(StrategyConstants.Errors.OperatorContextRequired);
     }
 
@@ -289,7 +298,8 @@ public class RestStrategyTests
                     new RequestValidationResult([new RequestValidationFailure("Id", "Id is required")])));
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<RequestValidationException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<RequestValidationException>(strategy.Execute<TestEntity>);
+
         ex.Errors.Count().ShouldBe(1);
 
         logger.ShouldHaveReceived(LogLevel.Warning, "Execute get user [user api] failed validation");
@@ -418,7 +428,8 @@ public class RestStrategyTests
             }));
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<RestResponseException>(() => strategy.Execute<TestEntity>());
+        var ex = await Should.ThrowAsync<RestResponseException>(strategy.Execute<TestEntity>);
+
         ex.Message.ShouldBe(HttpStrategyConstants.Errors.ResponseContentRequired);
     }
 
@@ -486,9 +497,7 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK,
-                HasContent = true,
-                Content = "{\"id\":\"1\",\"name\":\"John\"}",
+                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"John\"}",
             }));
 
         // Act
@@ -511,9 +520,7 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK,
-                HasContent = true,
-                Content = "{\"id\":\"1\",\"name\":\"John\"}",
+                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"John\"}",
             }));
 
         // Act

@@ -502,7 +502,8 @@ public class SoapHttpClientTests
     }
 
     [Fact]
-    public async Task PostAsync_WhenCallerCancellationTokenCancelled_ThrowsSoapRequestExceptionWrappingOperationCanceledException()
+    public async Task
+        PostAsync_WhenCallerCancellationTokenCancelled_ThrowsSoapRequestExceptionWrappingOperationCanceledException()
     {
         // Arrange
         using var cts = new CancellationTokenSource();
@@ -550,7 +551,8 @@ public class SoapHttpClientTests
     }
 
     [Fact]
-    public async Task PostAsync_WhenOperationCanceledExceptionWithTimeoutInnerOccurs_LogsTimeoutAndThrowsSoapRequestException()
+    public async Task
+        PostAsync_WhenOperationCanceledExceptionWithTimeoutInnerOccurs_LogsTimeoutAndThrowsSoapRequestException()
     {
         // Arrange
         var handler = new TestHttpMessageHandler((_, _) =>
@@ -575,7 +577,8 @@ public class SoapHttpClientTests
     }
 
     [Fact]
-    public async Task PostAsync_WhenOperationCanceledExceptionByAnotherSourceOccurs_LogsCancellationAndThrowsSoapRequestException()
+    public async Task
+        PostAsync_WhenOperationCanceledExceptionByAnotherSourceOccurs_LogsCancellationAndThrowsSoapRequestException()
     {
         // Arrange
         var handler = new TestHttpMessageHandler((_, _) =>
@@ -652,7 +655,10 @@ public class SoapHttpClientTests
             .WithXmlDeclaration(false);
 
         // Act
-        var response = await client.PostAsync("soap/service", new XElement("TestRequest"));
+        var response = await client.PostAsync(
+            "soap/service",
+            new XElement("TestRequest"),
+            TestContext.Current.CancellationToken);
 
         // Assert
         response.ShouldNotBeNull();
@@ -667,7 +673,8 @@ public class SoapHttpClientTests
         const string soapResponseBody =
             "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><CustomResult>123</CustomResult></soap:Body></soap:Envelope>";
 
-        var customContent = new StreamContent(new NonSeekableStream(new MemoryStream(Encoding.UTF8.GetBytes(soapResponseBody))));
+        var customContent =
+            new StreamContent(new NonSeekableStream(new MemoryStream(Encoding.UTF8.GetBytes(soapResponseBody))));
         customContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/xml");
 
         var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
@@ -684,14 +691,17 @@ public class SoapHttpClientTests
             .WithMediaType("text/xml");
 
         // Act
-        var response = await client.PostAsync("soap/service", new XElement("TestRequest"));
+        var response = await client.PostAsync(
+            "soap/service",
+            new XElement("TestRequest"),
+            TestContext.Current.CancellationToken);
 
         // Assert
         response.ShouldNotBeNull();
         response.HasContent.ShouldBeTrue();
         response.HasBody.ShouldBeTrue();
         response.BodyContent.ShouldNotBeNull();
-        response.BodyContent!.Name.LocalName.ShouldBe("CustomResult");
+        response.BodyContent.Name.LocalName.ShouldBe("CustomResult");
     }
 
     private sealed class NonSeekableStream(Stream inner) : Stream

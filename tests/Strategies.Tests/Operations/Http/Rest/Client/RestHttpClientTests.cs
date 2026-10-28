@@ -283,7 +283,8 @@ public class RestHttpClientTests
         // Assert
         response.ShouldNotBeNull();
         verboseLogs.ShouldNotContain(x => x.Item1 == "Created Request Payload:");
-        verboseLogs.ShouldContain(x => x.Item1 == "Sending GET Request to:" && x.Item2 == "https://example.com/api/items");
+        verboseLogs.ShouldContain(x =>
+            x.Item1 == "Sending GET Request to:" && x.Item2 == "https://example.com/api/items");
     }
 
     [Fact]
@@ -372,7 +373,8 @@ public class RestHttpClientTests
     }
 
     [Fact]
-    public async Task SendAsync_WhenCallerCancellationTokenCancelled_ThrowsRestRequestExceptionWrappingOperationCanceledException()
+    public async Task
+        SendAsync_WhenCallerCancellationTokenCancelled_ThrowsRestRequestExceptionWrappingOperationCanceledException()
     {
         // Arrange
         using var cts = new CancellationTokenSource();
@@ -386,7 +388,8 @@ public class RestHttpClientTests
             .WithMediaType("application/json");
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items", null, cts.Token));
+        var ex = await Should.ThrowAsync<RestRequestException>(() =>
+            client.SendAsync(HttpMethod.Get, "items", null, cts.Token));
         ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
     }
 
@@ -413,7 +416,8 @@ public class RestHttpClientTests
     }
 
     [Fact]
-    public async Task SendAsync_WhenOperationCanceledExceptionWithTimeoutInnerOccurs_LogsTimeoutAndThrowsRestRequestException()
+    public async Task
+        SendAsync_WhenOperationCanceledExceptionWithTimeoutInnerOccurs_LogsTimeoutAndThrowsRestRequestException()
     {
         // Arrange
         var handler = new TestHttpMessageHandler((_, _) =>
@@ -435,7 +439,8 @@ public class RestHttpClientTests
     }
 
     [Fact]
-    public async Task SendAsync_WhenOperationCanceledExceptionByAnotherSourceOccurs_LogsCancellationAndThrowsRestRequestException()
+    public async Task
+        SendAsync_WhenOperationCanceledExceptionByAnotherSourceOccurs_LogsCancellationAndThrowsRestRequestException()
     {
         // Arrange
         var handler = new TestHttpMessageHandler((_, _) =>
@@ -470,7 +475,8 @@ public class RestHttpClientTests
             .WithMediaType("application/json");
 
         // Act & Assert
-        var ex = await Should.ThrowAsync<RestRequestException>(() => client.SendAsync(HttpMethod.Get, "items", null, cts.Token));
+        var ex = await Should.ThrowAsync<RestRequestException>(() =>
+            client.SendAsync(HttpMethod.Get, "items", null, cts.Token));
         ex.InnerException.ShouldBeAssignableTo<OperationCanceledException>();
         logger.ShouldHaveReceived(LogLevel.Warning, "Caller provided cancellation token was cancelled");
     }
@@ -499,10 +505,7 @@ public class RestHttpClientTests
     public async Task SendAsync_WhenResponseContentIsNull_ReturnsRestResponseWithNullContent()
     {
         // Arrange
-        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = null,
-        });
+        var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = null, });
 
         var httpClient = new HttpClient(handler);
         var client = new RestHttpClient(httpClient, logger);
@@ -511,7 +514,7 @@ public class RestHttpClientTests
             .WithMediaType("application/json");
 
         // Act
-        var response = await client.SendAsync(HttpMethod.Get, "items");
+        var response = await client.SendAsync(HttpMethod.Get, "items", null, TestContext.Current.CancellationToken);
 
         // Assert
         response.ShouldNotBeNull();

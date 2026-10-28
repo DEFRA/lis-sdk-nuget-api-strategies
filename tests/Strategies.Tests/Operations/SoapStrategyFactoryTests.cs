@@ -97,8 +97,11 @@ public class SoapStrategyFactoryTests
 
         var headers = (Dictionary<string, string>?)typeof(SoapStrategy<TestService>)
             .GetProperty("Headers", flags)?.GetValue(soapStrategy);
+
         headers.ShouldNotBeNull();
+
         var expectedAuth = $"Basic {Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("admin:secret123"))}";
+
         headers["Authorization"].ShouldBe(expectedAuth);
         headers["x-api-key"].ShouldBe("api-key-123");
 

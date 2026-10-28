@@ -141,6 +141,8 @@ public class HttpStrategyFactoryBaseTests
         // Arrange
         var factory = new TestHttpStrategyFactory();
         var shouldIncludeApiKey = false;
+
+        // ReSharper disable once AccessToModifiedClosure
         factory.WithDefaultApiKey(() => shouldIncludeApiKey, "conditional-api-key");
 
         var firstStrategy = new TestHttpStrategy();
@@ -165,8 +167,10 @@ public class HttpStrategyFactoryBaseTests
     {
         // Arrange
         var factory = new TestHttpStrategyFactory();
-        Func<bool> condition = () => true;
+        var condition = () => true;
+
         factory.WithDefaultApiKey(condition, "conditional-api-key");
+
         var mockStrategy = Substitute.For<IHttpStrategy<TestService, object>>();
 
         // Act
@@ -190,7 +194,8 @@ public class HttpStrategyFactoryBaseTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void WithDefaultApiKey_WithConditionTrueAndInvalidKey_WhenDefaultsAttached_ShouldThrowArgumentException(string? apiKey)
+    public void WithDefaultApiKey_WithConditionTrueAndInvalidKey_WhenDefaultsAttached_ShouldThrowArgumentException(
+        string? apiKey)
     {
         // Arrange
         var factory = new TestHttpStrategyFactory();
@@ -207,7 +212,9 @@ public class HttpStrategyFactoryBaseTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void WithDefaultApiKey_WithConditionFalseAndInvalidKey_WhenDefaultsAttached_ShouldNotThrowAndNotSetApiKeyHeader(string? apiKey)
+    public void
+        WithDefaultApiKey_WithConditionFalseAndInvalidKey_WhenDefaultsAttached_ShouldNotThrowAndNotSetApiKeyHeader(
+            string? apiKey)
     {
         // Arrange
         var factory = new TestHttpStrategyFactory();

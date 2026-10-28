@@ -12,21 +12,6 @@ using Shouldly;
 
 public class RestSerializerTests
 {
-    private class UnserializableObject
-    {
-        [JsonConverter(typeof(ThrowingConverter))]
-        public string? Value { get; set; }
-    }
-
-    private class ThrowingConverter : JsonConverter<string>
-    {
-        public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-            throw new NotSupportedException("Deserialization failed intentionally");
-
-        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) =>
-            throw new NotSupportedException("Serialization failed intentionally");
-    }
-
     [Fact]
     public void Serialize_WithValidObjectAndDefaultOptions_ReturnsCamelCaseJson()
     {
@@ -138,5 +123,20 @@ public class RestSerializerTests
         var ex = Should.Throw<InvalidOperationException>(() => RestSerializer.Deserialize<TestEntity>(json));
         ex.Message.ShouldBe("Failed to deserialize JSON to object");
         ex.InnerException.ShouldNotBeNull();
+    }
+
+    private class UnserializableObject
+    {
+        [JsonConverter(typeof(ThrowingConverter))]
+        public string? Value { get; set; }
+    }
+
+    private class ThrowingConverter : JsonConverter<string>
+    {
+        public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            throw new NotSupportedException("Deserialization failed intentionally");
+
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) =>
+            throw new NotSupportedException("Serialization failed intentionally");
     }
 }

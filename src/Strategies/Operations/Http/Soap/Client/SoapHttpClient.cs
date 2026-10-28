@@ -154,10 +154,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
         httpRequest.Headers.Add("SOAPAction", SoapAction);
         httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaType));
 
-        foreach (var header in Headers)
-        {
-            httpRequest.Headers.Add(header.Key, header.Value);
-        }
+        AddCustomHeadersToRequest(httpRequest);
 
         LogCallingSoapEndpoint(logger, absoluteUrl.ToString());
 
@@ -289,6 +286,14 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
             SoapFaultCode = soapFaultCode,
             SoapFaultDetails = soapFaultDetails,
         };
+    }
+
+    private void AddCustomHeadersToRequest(HttpRequestMessage httpRequest)
+    {
+        foreach (var header in Headers)
+        {
+            httpRequest.Headers.Add(header.Key, header.Value);
+        }
     }
 
     private void EmmitVerboseOutput(string description, string? data)

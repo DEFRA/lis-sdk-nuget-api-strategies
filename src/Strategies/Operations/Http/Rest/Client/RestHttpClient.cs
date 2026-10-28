@@ -151,10 +151,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
 
         httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaType));
 
-        foreach (var header in Headers)
-        {
-            httpRequest.Headers.Add(header.Key, header.Value);
-        }
+        AddCustomHeadersToRequest(httpRequest);
 
         LogCallingRestEndpoint(logger, httpMethod.Method, absoluteUrl.ToString());
 
@@ -234,6 +231,14 @@ public sealed partial class RestHttpClient : IRestHttpClient
             Content = content,
             Headers = httpResponse.Headers,
         };
+    }
+
+    private void AddCustomHeadersToRequest(HttpRequestMessage httpRequest)
+    {
+        foreach (var header in Headers)
+        {
+            httpRequest.Headers.Add(header.Key, header.Value);
+        }
     }
 
     private void EmmitVerboseOutput(string description, string? data)

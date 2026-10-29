@@ -242,7 +242,7 @@ public class HttpStrategyBaseTests
     [Theory]
     [InlineData(1)]
     [InlineData(5000)]
-    [InlineData(30000)]
+    [InlineData(300000)]
     public void WithTimeout_WithValidTimeout_ShouldSetTimeoutMsAndReturnParent(int timeoutMs)
     {
         // Arrange
@@ -260,8 +260,8 @@ public class HttpStrategyBaseTests
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-5000)]
-    [InlineData(30001)]
-    [InlineData(50000)]
+    [InlineData(300001)]
+    [InlineData(500000)]
     public void WithTimeout_WithInvalidTimeout_ShouldThrowArgumentOutOfRangeException(int invalidTimeout)
     {
         // Arrange

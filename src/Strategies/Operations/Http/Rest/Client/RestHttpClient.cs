@@ -83,7 +83,7 @@ public sealed partial class RestHttpClient : IRestHttpClient
     public IRestHttpClient WithTimeout(int timeoutMs)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(timeoutMs, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 30000);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(timeoutMs, 300000);
 
         httpClient.Timeout = TimeSpan.FromMilliseconds(timeoutMs);
 

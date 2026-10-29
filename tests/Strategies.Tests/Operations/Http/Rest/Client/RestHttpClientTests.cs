@@ -105,8 +105,8 @@ public class RestHttpClientTests
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-5000)]
-    [InlineData(30001)]
-    [InlineData(50000)]
+    [InlineData(300001)]
+    [InlineData(500000)]
     public void WithTimeout_WithInvalidValue_ShouldThrowArgumentOutOfRangeException(int invalidTimeout)
     {
         // Arrange
@@ -120,7 +120,7 @@ public class RestHttpClientTests
     [Theory]
     [InlineData(1)]
     [InlineData(5000)]
-    [InlineData(30000)]
+    [InlineData(300000)]
     public void WithTimeout_WithValidValue_ShouldSetTimeoutAndReturnInstance(int timeoutMs)
     {
         // Arrange

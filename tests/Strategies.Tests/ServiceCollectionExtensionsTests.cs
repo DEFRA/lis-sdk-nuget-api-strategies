@@ -18,6 +18,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Requests.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Polly.Registry;
 using Shouldly;
 using Xunit;
 
@@ -167,6 +168,43 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var count = services.Count(sd => sd.ServiceType == typeof(IRestHttpClient));
+        count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void AddCircuitBreakerStrategyFactory_ShouldRegisterRegistryAndTransientFactory()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        var returnedServices = services.AddCircuitBreakerStrategyFactory<TestService>();
+
+        // Assert
+        returnedServices.ShouldBe(services);
+
+        var registryDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
+        registryDescriptor.ShouldNotBeNull();
+        registryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Singleton);
+
+        var factoryDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(ICircuitBreakerStrategyFactory<TestService>));
+        factoryDescriptor.ShouldNotBeNull();
+        factoryDescriptor.ImplementationType.ShouldBe(typeof(CircuitBreakerStrategyFactory<TestService>));
+        factoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
+    }
+
+    [Fact]
+    public void AddCircuitBreakerStrategyFactory_WhenRegistryAlreadyRegistered_ShouldNotReRegisterRegistry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton(new ResiliencePipelineRegistry<string>());
+
+        // Act
+        services.AddCircuitBreakerStrategyFactory<TestService>();
+
+        // Assert
+        var count = services.Count(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
         count.ShouldBe(1);
     }
 }

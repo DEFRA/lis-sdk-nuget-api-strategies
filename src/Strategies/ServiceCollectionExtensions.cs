@@ -15,6 +15,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Client;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Polly.Registry;
 
 public static class ServiceCollectionExtensions
 {
@@ -76,6 +77,21 @@ public static class ServiceCollectionExtensions
             }
 
             services.AddTransient<IRestStrategyFactory<TService>, RestStrategyFactory<TService>>();
+
+            return services;
+        }
+
+        public IServiceCollection AddCircuitBreakerStrategyFactory<TService>()
+            where TService : class
+        {
+            var isRegistryRegistered = services.Any(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
+
+            if (!isRegistryRegistered)
+            {
+                services.AddSingleton<ResiliencePipelineRegistry<string>>();
+            }
+
+            services.AddTransient<ICircuitBreakerStrategyFactory<TService>, CircuitBreakerStrategyFactory<TService>>();
 
             return services;
         }

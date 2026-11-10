@@ -13,6 +13,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker.Constants;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Registry;
@@ -228,9 +229,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
         await ExecuteRequestValidation();
 
-        var resolvedKey = CircuitKey ?? $"{typeof(TService).FullName}:{ActionDescription}";
-
-        var pipeline = GetOrCreatePipeline<TResult>(resolvedKey);
+        var pipeline = GetOrCreatePipeline<TResult>(CircuitKey!);
 
         var ct = CancellationToken!.Value;
 
@@ -248,14 +247,14 @@ public sealed partial class CircuitBreakerStrategy<TService>
         }
         catch (BrokenCircuitException ex)
         {
-            LogCircuitBreakerOpen(resolvedKey, ex);
+            LogCircuitBreakerOpen(CircuitKey!, ex);
 
             if (ConfiguredFallback != null)
             {
                 return await ExecuteFallbackWithLoggingAsync<TResult>(ct);
             }
 
-            throw new CircuitBreakerOpenException($"Circuit '{resolvedKey}' is OPEN. Requests are blocked.", ex);
+            throw new CircuitBreakerOpenException($"Circuit '{CircuitKey!}' is OPEN. Requests are blocked.", ex);
         }
         catch (Exception ex) when (IsHandledException(ex))
         {
@@ -285,6 +284,11 @@ public sealed partial class CircuitBreakerStrategy<TService>
         if (ActionDescription == null)
         {
             throw new InvalidOperationException(StrategyConstants.Errors.ActionDescriptionRequired);
+        }
+
+        if (CircuitKey == null)
+        {
+            throw new InvalidOperationException(CircuitBreakerStrategyConstants.Errors.CircuitKeyRequired);
         }
 
         if (TargetDescription == null)

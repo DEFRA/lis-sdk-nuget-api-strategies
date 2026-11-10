@@ -12,6 +12,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -84,11 +85,26 @@ public class CircuitBreakerStrategyTests
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
             .WithLogger(logger)
             .WithCancellationToken(CancellationToken.None)
+            .WithCircuitKey("TestKey")
             .WithConsecutiveFailureThreshold(3)
             .WithAction(_ => Task.CompletedTask);
 
         var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
         ex.Message.ShouldBe(StrategyConstants.Errors.ActionDescriptionRequired);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCircuitKeyNull_ThrowsInvalidOperationException()
+    {
+        var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
+            .WithLogger(logger)
+            .WithCancellationToken(CancellationToken.None)
+            .WithActionDescription("Test")
+            .WithConsecutiveFailureThreshold(3)
+            .WithAction(_ => Task.CompletedTask);
+
+        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        ex.Message.ShouldBe(CircuitBreakerStrategyConstants.Errors.CircuitKeyRequired);
     }
 
     [Fact]
@@ -487,14 +503,15 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithDefaultCircuitKeyFromServiceAndActionDescription()
+    public async Task ExecuteAsync_WithExplicitCircuitKey_ExecutesSuccessfully()
     {
         var strategy = CreateStrategy()
+            .WithCircuitKey("explicit-key")
             .WithConsecutiveFailureThreshold(2)
-            .WithAction(_ => Task.FromResult("default-key-result"));
+            .WithAction(_ => Task.FromResult("explicit-key-result"));
 
         var result = await strategy.ExecuteAsync<string>();
-        result.ShouldBe("default-key-result");
+        result.ShouldBe("explicit-key-result");
     }
 
     private CircuitBreakerStrategy<TestService> CreateStrategy()

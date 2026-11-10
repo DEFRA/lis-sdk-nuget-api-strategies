@@ -34,7 +34,7 @@ public class CircuitBreakerStrategyTests
     {
         var strategy = CreateStrategy();
 
-        Should.Throw<ArgumentException>(() => strategy.WithCircuitKey(""));
+        Should.Throw<ArgumentException>(() => strategy.WithCircuitKey(string.Empty));
         Should.Throw<ArgumentNullException>(() => strategy.WithAction((Func<CancellationToken, Task>)null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithAction((Func<CancellationToken, Task<string>>)null!));
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithConsecutiveFailureThreshold(0));
@@ -139,20 +139,23 @@ public class CircuitBreakerStrategyTests
 
         // Call 1: fails
         await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        logger.ShouldHaveReceived(LogLevel.Warning, "Circuit breaker operation 'TestAction' encountered handled failure");
 
         // Call 2: fails and trips circuit
         await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
         onBreakCalled.ShouldBeTrue();
+        logger.ShouldHaveReceived(LogLevel.Warning, "Circuit 'consecutive-fail-key:Consecutive' opened for 5s due to error: boom");
 
         // Call 3: circuit is now OPEN
         var ex = await Should.ThrowAsync<CircuitBreakerOpenException>(() => strategy.ExecuteAsync());
         ex.Message.ShouldContain("is OPEN");
+        logger.ShouldHaveReceived(LogLevel.Warning, "Circuit breaker 'consecutive-fail-key' is OPEN for action 'TestAction'");
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenCircuitOpen_ExecutesFallback()
     {
-        var fallbackCalled = false;
+        var fallbackCount = 0;
         var strategy = CreateStrategy()
             .WithCircuitKey("fallback-key")
             .WithConsecutiveFailureThreshold(1)
@@ -161,18 +164,25 @@ public class CircuitBreakerStrategyTests
             .WithAction<string>(_ => throw new InvalidOperationException("backend error"))
             .WithFallback<string>(_ =>
             {
-                fallbackCalled = true;
+                fallbackCount++;
                 return Task.FromResult("fallback-data");
             });
 
-        // Call 1: fails and executes fallback
+        // Calls 1 and 2 fail and trip the circuit
         var result1 = await strategy.ExecuteAsync<string>();
         result1.ShouldBe("fallback-data");
-        fallbackCalled.ShouldBeTrue();
 
-        // Call 2: circuit is OPEN, should execute fallback
         var result2 = await strategy.ExecuteAsync<string>();
         result2.ShouldBe("fallback-data");
+
+        // Call 3: circuit is OPEN (Polly throws BrokenCircuitException on execution), executes fallback
+        var result3 = await strategy.ExecuteAsync<string>();
+        result3.ShouldBe("fallback-data");
+
+        fallbackCount.ShouldBe(3);
+        logger.ShouldHaveReceived(LogLevel.Warning, "Circuit breaker operation 'TestAction' encountered handled failure", count: 2);
+        logger.ShouldHaveReceived(LogLevel.Warning, "Circuit breaker 'fallback-key' is OPEN for action 'TestAction'", count: 1);
+        logger.ShouldHaveReceived(LogLevel.Information, "Executing fallback action for 'TestAction'", count: 3);
     }
 
     [Fact]
@@ -316,6 +326,160 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         await Should.ThrowAsync<UnauthorizedAccessException>(() => strategy.ExecuteAsync());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CircuitRecovery_TriggersOnHalfOpenAndOnResetAndLogs()
+    {
+        var onHalfOpenCalled = false;
+        var onResetCalled = false;
+        var fail = true;
+
+        var strategy = CreateStrategy()
+            .WithCircuitKey("recovery-circuit-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithDurationOfBreak(500) // 500ms break (Polly minimum)
+            .WithHandledException<InvalidOperationException>()
+            .OnHalfOpen(() => onHalfOpenCalled = true)
+            .OnReset(() => onResetCalled = true)
+            .WithAction(_ =>
+            {
+                if (fail)
+                {
+                    throw new InvalidOperationException("temporary failure");
+                }
+
+                return Task.FromResult("recovered");
+            });
+
+        // Calls 1 and 2: fail and trip circuit
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync<string>());
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync<string>());
+        logger.ShouldHaveReceived(LogLevel.Warning, "Circuit 'recovery-circuit-key:Consecutive' opened for 0.5s due to error: temporary failure");
+
+        // Wait for break duration to elapse so circuit enters Half-Open on next call
+        await Task.Delay(600, TestContext.Current.CancellationToken);
+
+        // Call 3: probe succeeds -> transitions from Half-Open to Closed
+        fail = false;
+        var result = await strategy.ExecuteAsync<string>();
+
+        result.ShouldBe("recovered");
+        onHalfOpenCalled.ShouldBeTrue();
+        onResetCalled.ShouldBeTrue();
+        logger.ShouldHaveReceived(LogLevel.Information, "Circuit 'recovery-circuit-key:Consecutive' entered HALF-OPEN state");
+        logger.ShouldHaveReceived(LogLevel.Information, "Circuit 'recovery-circuit-key:Consecutive' reset to CLOSED");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithHandledExceptionPredicate_HandlesMatchingAndIgnoresNonMatching()
+    {
+        var strategy = CreateStrategy()
+            .WithCircuitKey("predicate-ex-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithDurationOfBreak(5000)
+            .WithHandledException(ex => ex is InvalidOperationException ioe && ioe.Message.Contains("handled"))
+            .WithAction<string>(_ => throw new InvalidOperationException("not-a-match"))
+            .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
+
+        // When exception does not match predicate, fallback should not be executed and exception is rethrown
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync<string>());
+
+        // Configure matching action
+        var matchingStrategy = CreateStrategy()
+            .WithCircuitKey("predicate-ex-matching-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithDurationOfBreak(5000)
+            .WithHandledException(ex => ex is InvalidOperationException ioe && ioe.Message.Contains("handled"))
+            .WithAction<string>(_ => throw new InvalidOperationException("handled error"))
+            .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
+
+        var result = await matchingStrategy.ExecuteAsync<string>();
+        result.ShouldBe("fallback-executed");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenActionTypeMismatch_ThrowsInvalidOperationException()
+    {
+        // Configured as void action (Task), but executed with generic ExecuteAsync<int>()
+        // In this case, void action returns null, casting null to int throws or configuredAction is Func<CancellationToken, Task<object?>>
+        // Let's test configuredAction is Func<CancellationToken, Task<string>> but ExecuteAsync<int>() is called
+        var strategy = CreateStrategy()
+            .WithCircuitKey("mismatch-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithAction(_ => Task.FromResult("string-result"));
+
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync<int>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenFallbackTypeMismatch_ThrowsInvalidOperationException()
+    {
+        var strategy = CreateStrategy()
+            .WithCircuitKey("fallback-mismatch-key")
+            .WithConsecutiveFailureThreshold(1)
+            .WithHandledException<InvalidOperationException>()
+            .WithAction<int>(_ => throw new InvalidOperationException("error"))
+            .WithFallback<string>(_ => Task.FromResult("string-fallback"));
+
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync<int>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithDefaultTimingOptions_ExecutesSuccessfully()
+    {
+        // When durationOfBreakMs, samplingDurationMs, and minimumThroughput are not explicitly set
+        var strategy = CreateStrategy()
+            .WithCircuitKey("defaults-timing-key")
+            .WithFailureRatio(0.5)
+            .WithAction(_ => Task.FromResult("ok"));
+
+        var result = await strategy.ExecuteAsync<string>();
+        result.ShouldBe("ok");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenConsecutiveThresholdIsOne_ConfiguresMinimumThroughputCorrectly()
+    {
+        var onBreakCalled = false;
+        var strategy = CreateStrategy()
+            .WithCircuitKey("threshold-one-key")
+            .WithConsecutiveFailureThreshold(1)
+            .WithDurationOfBreak(5000)
+            .WithHandledException<InvalidOperationException>()
+            .OnBreak((_, _) => onBreakCalled = true)
+            .WithAction(_ => throw new InvalidOperationException("fail immediately"));
+
+        // Call 1
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+
+        // Call 2: with minThroughput=2, ratio=0.5, 2 failures out of 2 requests trips the circuit
+        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        onBreakCalled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithHandledResultNonMatching_ReturnsResultWithoutBreaking()
+    {
+        var strategy = CreateStrategy()
+            .WithCircuitKey("handled-result-no-match-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithHandledResult<int>(res => res == 500)
+            .WithAction(_ => Task.FromResult(200));
+
+        var result = await strategy.ExecuteAsync<int>();
+        result.ShouldBe(200);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithDefaultCircuitKeyFromServiceAndActionDescription()
+    {
+        var strategy = CreateStrategy()
+            .WithConsecutiveFailureThreshold(2)
+            .WithAction(_ => Task.FromResult("default-key-result"));
+
+        var result = await strategy.ExecuteAsync<string>();
+        result.ShouldBe("default-key-result");
     }
 
     private CircuitBreakerStrategy<TestService> CreateStrategy()

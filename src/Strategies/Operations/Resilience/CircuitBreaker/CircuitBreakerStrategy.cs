@@ -376,14 +376,6 @@ public sealed partial class CircuitBreakerStrategy<TService>
             return true;
         }
 
-        foreach (var predicate in handledExceptions)
-        {
-            if (predicate(ex))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return handledExceptions.Any(predicate => predicate(ex));
     }
 }

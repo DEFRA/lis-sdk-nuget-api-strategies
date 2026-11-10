@@ -15,40 +15,54 @@ using Polly.Registry;
 
 public sealed class CircuitBreakerStrategyFactory<TService>
     : StrategyFactoryBase<TService, ICircuitBreakerStrategyFactory<TService>>,
-      ICircuitBreakerStrategyFactory<TService>
+        ICircuitBreakerStrategyFactory<TService>
     where TService : class
 {
-    private readonly IServiceProvider serviceProvider;
-    private readonly List<Func<Exception, bool>> defaultHandledExceptions = new();
-
-    private string? defaultCircuitKey;
-    private int? defaultConsecutiveFailureThreshold;
-    private double? defaultFailureRatio;
-    private int? defaultSamplingDurationMs;
-    private int? defaultMinimumThroughput;
-    private int? defaultDurationOfBreakMs;
-
-    private Action<Exception, TimeSpan>? defaultOnBreakAction;
-    private Action? defaultOnResetAction;
-    private Action? defaultOnHalfOpenAction;
-
     public CircuitBreakerStrategyFactory(IServiceProvider serviceProvider)
     {
-        this.serviceProvider = serviceProvider;
+        ServiceProvider = serviceProvider;
+
         SetParentFactory(this);
     }
+
+    private IServiceProvider ServiceProvider { get; }
+
+    private List<Func<Exception, bool>> DefaultHandledExceptions { get; } = [];
+
+    private string? DefaultCircuitKey { get; set; }
+
+    private int? DefaultConsecutiveFailureThreshold { get; set; }
+
+    private double? DefaultFailureRatio { get; set; }
+
+    private int? DefaultSamplingDurationMs { get; set; }
+
+    private int? DefaultMinimumThroughput { get; set; }
+
+    private int? DefaultDurationOfBreakMs { get; set; }
+
+    private Action<Exception, TimeSpan>? DefaultOnBreakAction { get; set; }
+
+    private Action? DefaultOnResetAction { get; set; }
+
+    private Action? DefaultOnHalfOpenAction { get; set; }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultCircuitKey(string circuitKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(circuitKey);
-        defaultCircuitKey = circuitKey;
+
+        DefaultCircuitKey = circuitKey;
+
         return GetParentFactory();
     }
 
-    public ICircuitBreakerStrategyFactory<TService> WithDefaultConsecutiveFailureThreshold(int consecutiveFailureThreshold)
+    public ICircuitBreakerStrategyFactory<TService> WithDefaultConsecutiveFailureThreshold(
+        int consecutiveFailureThreshold)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(consecutiveFailureThreshold, 1);
-        defaultConsecutiveFailureThreshold = consecutiveFailureThreshold;
+
+        DefaultConsecutiveFailureThreshold = consecutiveFailureThreshold;
+
         return GetParentFactory();
     }
 
@@ -56,69 +70,86 @@ public sealed class CircuitBreakerStrategyFactory<TService>
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(failureRatio, 0.001);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(failureRatio, 1.0);
-        defaultFailureRatio = failureRatio;
+
+        DefaultFailureRatio = failureRatio;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultSamplingDuration(int samplingDurationMs)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(samplingDurationMs, 1);
-        defaultSamplingDurationMs = samplingDurationMs;
+
+        DefaultSamplingDurationMs = samplingDurationMs;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultMinimumThroughput(int minimumThroughput)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(minimumThroughput, 1);
-        defaultMinimumThroughput = minimumThroughput;
+
+        DefaultMinimumThroughput = minimumThroughput;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultDurationOfBreak(int durationOfBreakMs)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(durationOfBreakMs, 1);
-        defaultDurationOfBreakMs = durationOfBreakMs;
+
+        DefaultDurationOfBreakMs = durationOfBreakMs;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultHandledException<TException>()
         where TException : Exception
     {
-        defaultHandledExceptions.Add(ex => ex is TException);
+        DefaultHandledExceptions.Add(ex => ex is TException);
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultHandledException(Func<Exception, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);
-        defaultHandledExceptions.Add(predicate);
+
+        DefaultHandledExceptions.Add(predicate);
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultOnBreak(Action<Exception, TimeSpan> onBreakAction)
     {
         ArgumentNullException.ThrowIfNull(onBreakAction);
-        defaultOnBreakAction = onBreakAction;
+
+        DefaultOnBreakAction = onBreakAction;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultOnReset(Action onResetAction)
     {
         ArgumentNullException.ThrowIfNull(onResetAction);
-        defaultOnResetAction = onResetAction;
+
+        DefaultOnResetAction = onResetAction;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultOnHalfOpen(Action onHalfOpenAction)
     {
         ArgumentNullException.ThrowIfNull(onHalfOpenAction);
-        defaultOnHalfOpenAction = onHalfOpenAction;
+
+        DefaultOnHalfOpenAction = onHalfOpenAction;
+
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategy<TService> BuildCircuitBreakerStrategy()
     {
-        var pipelineRegistry = serviceProvider.GetRequiredService<ResiliencePipelineRegistry<string>>();
+        var pipelineRegistry = ServiceProvider.GetRequiredService<ResiliencePipelineRegistry<string>>();
         var circuitBreakerStrategy = new CircuitBreakerStrategy<TService>(pipelineRegistry);
 
         AttachDefaults(circuitBreakerStrategy);
@@ -130,54 +161,54 @@ public sealed class CircuitBreakerStrategyFactory<TService>
     {
         AttachDefaultsToBuilder(strategyBuilder);
 
-        if (defaultCircuitKey != null)
+        if (DefaultCircuitKey != null)
         {
-            strategyBuilder.WithCircuitKey(defaultCircuitKey);
+            strategyBuilder.WithCircuitKey(DefaultCircuitKey);
         }
 
-        if (defaultConsecutiveFailureThreshold.HasValue)
+        if (DefaultConsecutiveFailureThreshold.HasValue)
         {
-            strategyBuilder.WithConsecutiveFailureThreshold(defaultConsecutiveFailureThreshold.Value);
+            strategyBuilder.WithConsecutiveFailureThreshold(DefaultConsecutiveFailureThreshold.Value);
         }
 
-        if (defaultFailureRatio.HasValue)
+        if (DefaultFailureRatio.HasValue)
         {
-            strategyBuilder.WithFailureRatio(defaultFailureRatio.Value);
+            strategyBuilder.WithFailureRatio(DefaultFailureRatio.Value);
         }
 
-        if (defaultSamplingDurationMs.HasValue)
+        if (DefaultSamplingDurationMs.HasValue)
         {
-            strategyBuilder.WithSamplingDuration(defaultSamplingDurationMs.Value);
+            strategyBuilder.WithSamplingDuration(DefaultSamplingDurationMs.Value);
         }
 
-        if (defaultMinimumThroughput.HasValue)
+        if (DefaultMinimumThroughput.HasValue)
         {
-            strategyBuilder.WithMinimumThroughput(defaultMinimumThroughput.Value);
+            strategyBuilder.WithMinimumThroughput(DefaultMinimumThroughput.Value);
         }
 
-        if (defaultDurationOfBreakMs.HasValue)
+        if (DefaultDurationOfBreakMs.HasValue)
         {
-            strategyBuilder.WithDurationOfBreak(defaultDurationOfBreakMs.Value);
+            strategyBuilder.WithDurationOfBreak(DefaultDurationOfBreakMs.Value);
         }
 
-        foreach (var handledException in defaultHandledExceptions)
+        foreach (var handledException in DefaultHandledExceptions)
         {
             strategyBuilder.WithHandledException(handledException);
         }
 
-        if (defaultOnBreakAction != null)
+        if (DefaultOnBreakAction != null)
         {
-            strategyBuilder.OnBreak(defaultOnBreakAction);
+            strategyBuilder.OnBreak(DefaultOnBreakAction);
         }
 
-        if (defaultOnResetAction != null)
+        if (DefaultOnResetAction != null)
         {
-            strategyBuilder.OnReset(defaultOnResetAction);
+            strategyBuilder.OnReset(DefaultOnResetAction);
         }
 
-        if (defaultOnHalfOpenAction != null)
+        if (DefaultOnHalfOpenAction != null)
         {
-            strategyBuilder.OnHalfOpen(defaultOnHalfOpenAction);
+            strategyBuilder.OnHalfOpen(DefaultOnHalfOpenAction);
         }
     }
 }

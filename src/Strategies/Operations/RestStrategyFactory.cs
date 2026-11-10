@@ -21,6 +21,7 @@ public sealed class RestStrategyFactory<TService> : HttpStrategyFactoryBase<TSer
     public RestStrategyFactory(IServiceProvider serviceProvider)
     {
         this.serviceProvider = serviceProvider;
+
         SetParentFactory(this);
     }
 
@@ -31,12 +32,14 @@ public sealed class RestStrategyFactory<TService> : HttpStrategyFactoryBase<TSer
     public IRestStrategyFactory<TService> WithDefaultResourceUrl(string resourceUrl)
     {
         DefaultResourceUrl = resourceUrl;
+
         return this;
     }
 
     public IRestStrategyFactory<TService> WithDefaultJsonSerializerOptions(JsonSerializerOptions jsonSerializerOptions)
     {
         DefaultJsonSerializerOptions = jsonSerializerOptions;
+
         return this;
     }
 

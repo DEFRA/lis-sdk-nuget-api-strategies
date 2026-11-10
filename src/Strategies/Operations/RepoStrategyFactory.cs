@@ -24,6 +24,7 @@ public sealed class RepoStrategyFactory<TService> : StrategyFactoryBase<TService
     public IRepoStrategyFactory<TService> WithDefaultEntityDescription(string entityDescription)
     {
         DefaultEntityDescription = entityDescription;
+
         return this;
     }
 

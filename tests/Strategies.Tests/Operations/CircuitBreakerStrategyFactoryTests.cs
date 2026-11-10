@@ -102,28 +102,33 @@ public class CircuitBreakerStrategyFactoryTests
         var cbStrategy = (CircuitBreakerStrategy<TestService>)strategy;
         const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
-        typeof(CircuitBreakerStrategy<TestService>).GetProperty("Logger", flags)?.GetValue(cbStrategy).ShouldBe(logger);
-        typeof(CircuitBreakerStrategy<TestService>).GetField("circuitKey", flags)?.GetValue(cbStrategy).ShouldBe("my-shared-circuit");
-        typeof(CircuitBreakerStrategy<TestService>).GetField("consecutiveFailureThreshold", flags)?.GetValue(cbStrategy).ShouldBe(4);
-        typeof(CircuitBreakerStrategy<TestService>).GetField("failureRatio", flags)?.GetValue(cbStrategy).ShouldBe(0.3);
-        typeof(CircuitBreakerStrategy<TestService>).GetField("samplingDurationMs", flags)?.GetValue(cbStrategy).ShouldBe(20000);
-        typeof(CircuitBreakerStrategy<TestService>).GetField("minimumThroughput", flags)?.GetValue(cbStrategy).ShouldBe(8);
-        typeof(CircuitBreakerStrategy<TestService>).GetField("durationOfBreakMs", flags)?.GetValue(cbStrategy).ShouldBe(5000);
+        var defaultOnBreak = typeof(CircuitBreakerStrategyFactory<TestService>)
+            .GetProperty("DefaultOnBreakAction", flags)?.GetValue(factory);
+        defaultOnBreak.ShouldNotBeNull();
 
-        var onBreakAction = (Action<Exception, TimeSpan>?)typeof(CircuitBreakerStrategy<TestService>)
-            .GetField("onBreakAction", flags)?.GetValue(cbStrategy);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("Logger", flags)?.GetValue(cbStrategy).ShouldBe(logger);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("CircuitKey", flags)?.GetValue(cbStrategy).ShouldBe("my-shared-circuit");
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("ConsecutiveFailureThreshold", flags)?.GetValue(cbStrategy).ShouldBe(4);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("FailureRatio", flags)?.GetValue(cbStrategy).ShouldBe(0.3);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("SamplingDurationMs", flags)?.GetValue(cbStrategy).ShouldBe(20000);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("MinimumThroughput", flags)?.GetValue(cbStrategy).ShouldBe(8);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("DurationOfBreakMs", flags)?.GetValue(cbStrategy).ShouldBe(5000);
+
+        var onBreakProp = typeof(CircuitBreakerStrategy<TestService>).GetProperty("OnBreakAction", flags);
+        onBreakProp.ShouldNotBeNull();
+        var onBreakAction = (Action<Exception, TimeSpan>?)onBreakProp.GetValue(cbStrategy);
         onBreakAction.ShouldNotBeNull();
         onBreakAction?.Invoke(new Exception("test"), TimeSpan.FromSeconds(5));
         onBreakCalled.ShouldBeTrue();
 
         var onResetAction = (Action?)typeof(CircuitBreakerStrategy<TestService>)
-            .GetField("onResetAction", flags)?.GetValue(cbStrategy);
+            .GetProperty("OnResetAction", flags)?.GetValue(cbStrategy);
         onResetAction.ShouldNotBeNull();
         onResetAction?.Invoke();
         onResetCalled.ShouldBeTrue();
 
         var onHalfOpenAction = (Action?)typeof(CircuitBreakerStrategy<TestService>)
-            .GetField("onHalfOpenAction", flags)?.GetValue(cbStrategy);
+            .GetProperty("OnHalfOpenAction", flags)?.GetValue(cbStrategy);
         onHalfOpenAction.ShouldNotBeNull();
         onHalfOpenAction?.Invoke();
         onHalfOpenCalled.ShouldBeTrue();

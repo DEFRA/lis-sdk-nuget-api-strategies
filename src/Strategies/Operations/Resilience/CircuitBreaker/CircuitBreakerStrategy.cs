@@ -6,6 +6,7 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreake
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
@@ -176,6 +177,53 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     public async Task<TResult> ExecuteAsync<TResult>()
     {
+        ValidateConfiguration();
+
+        EnsureOperatorHasRequiredPermissions();
+        LogExecutingAction();
+        await InvokeBeforeExecuteAction();
+        await ExecuteRequestValidation();
+
+        var resolvedKey = circuitKey ?? $"{typeof(TService).FullName}:{ActionDescription}";
+        var pipeline = GetOrCreatePipeline<TResult>(resolvedKey);
+        var ct = CancellationToken ?? System.Threading.CancellationToken.None;
+
+        try
+        {
+            var result = await pipeline.ExecuteAsync(
+                async token => await ExecuteConfiguredActionAsync<TResult>(token),
+                ct);
+
+            await InvokeAfterExecuteAction();
+            LogSuccessfullyExecutedAction();
+            return result;
+        }
+        catch (BrokenCircuitException ex)
+        {
+            LogCircuitBreakerOpen(resolvedKey, ex);
+
+            if (configuredFallback != null)
+            {
+                return await ExecuteFallbackWithLoggingAsync<TResult>(ct);
+            }
+
+            throw new CircuitBreakerOpenException($"Circuit '{resolvedKey}' is OPEN. Requests are blocked.", ex);
+        }
+        catch (Exception ex) when (IsHandledException(ex))
+        {
+            LogCircuitBreakerOperationEncounteredHandledFailure(ex);
+
+            if (configuredFallback != null)
+            {
+                return await ExecuteFallbackWithLoggingAsync<TResult>(ct);
+            }
+
+            throw;
+        }
+    }
+
+    private void ValidateConfiguration()
+    {
         if (Logger == null)
         {
             throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
@@ -201,68 +249,30 @@ public sealed partial class CircuitBreakerStrategy<TService>
             throw new InvalidOperationException(
                 "Circuit breaker must be configured with at least one threshold: call WithConsecutiveFailureThreshold(...) or WithFailureRatio(...) (or configure factory defaults).");
         }
+    }
 
-        EnsureOperatorHasRequiredPermissions();
-        LogExecutingAction();
-        await InvokeBeforeExecuteAction();
-        await ExecuteRequestValidation();
-
-        var resolvedKey = circuitKey ?? $"{typeof(TService).FullName}:{ActionDescription}";
-        var pipeline = GetOrCreatePipeline<TResult>(resolvedKey);
-        var ct = CancellationToken ?? System.Threading.CancellationToken.None;
-
-        try
+    private async Task<TResult> ExecuteConfiguredActionAsync<TResult>(CancellationToken token)
+    {
+        if (configuredAction is Func<CancellationToken, Task<TResult>> typedAction)
         {
-            var result = await pipeline.ExecuteAsync(
-                async token =>
-                {
-                    if (configuredAction is Func<CancellationToken, Task<TResult>> typedAction)
-                    {
-                        return await typedAction(token);
-                    }
-
-                    if (configuredAction is Func<CancellationToken, Task<object?>> voidAction)
-                    {
-                        var voidRes = await voidAction(token);
-                        return (TResult)voidRes!;
-                    }
-
-                    throw new InvalidOperationException($"Configured action return type does not match '{typeof(TResult).Name}'.");
-                },
-                ct);
-
-            await InvokeAfterExecuteAction();
-            LogSuccessfullyExecutedAction();
-            return result;
+            return await typedAction(token);
         }
-        catch (BrokenCircuitException ex)
+
+        if (configuredAction is Func<CancellationToken, Task<object?>> voidAction)
         {
-            LogCircuitBreakerOpen(resolvedKey, ex);
-
-            if (configuredFallback != null)
-            {
-                LogExecutingFallbackAction();
-                var fallbackResult = await ExecuteFallbackAsync<TResult>(ct);
-                await InvokeAfterExecuteAction();
-                return fallbackResult;
-            }
-
-            throw new CircuitBreakerOpenException($"Circuit '{resolvedKey}' is OPEN. Requests are blocked.", ex);
+            var voidRes = await voidAction(token);
+            return (TResult)voidRes!;
         }
-        catch (Exception ex) when (IsHandledException(ex))
-        {
-            LogCircuitBreakerOperationEncounteredHandledFailure(ex);
 
-            if (configuredFallback != null)
-            {
-                LogExecutingFallbackAction();
-                var fallbackResult = await ExecuteFallbackAsync<TResult>(ct);
-                await InvokeAfterExecuteAction();
-                return fallbackResult;
-            }
+        throw new InvalidOperationException($"Configured action return type does not match '{typeof(TResult).Name}'.");
+    }
 
-            throw;
-        }
+    private async Task<TResult> ExecuteFallbackWithLoggingAsync<TResult>(CancellationToken ct)
+    {
+        LogExecutingFallbackAction();
+        var fallbackResult = await ExecuteFallbackAsync<TResult>(ct);
+        await InvokeAfterExecuteAction();
+        return fallbackResult;
     }
 
     private async Task<TResult> ExecuteFallbackAsync<TResult>(CancellationToken ct)
@@ -285,65 +295,85 @@ public sealed partial class CircuitBreakerStrategy<TService>
     {
         return pipelineRegistry.GetOrAddPipeline<TResult>(key, builder =>
         {
-            var shouldHandle = new PredicateBuilder<TResult>()
-                .Handle<Exception>(ex => handledExceptions.Count == 0 || handledExceptions.Exists(p => p(ex)))
-                .HandleResult(res =>
-                {
-                    foreach (var del in handledResultPredicates)
-                    {
-                        if (del is Func<TResult, bool> pred && pred(res))
-                        {
-                            return true;
-                        }
-                    }
-
-                    return false;
-                });
-
+            var shouldHandle = BuildPredicate<TResult>();
             var breakDuration = durationOfBreakMs.HasValue
                 ? TimeSpan.FromMilliseconds(durationOfBreakMs.Value)
                 : TimeSpan.FromSeconds(30);
 
-            if (consecutiveFailureThreshold.HasValue)
-            {
-                var minThroughput = Math.Max(2, consecutiveFailureThreshold.Value);
-                var ratio = consecutiveFailureThreshold.Value < 2 ? 0.5 : 1.0;
+            AddConsecutiveBreaker(builder, key, breakDuration, shouldHandle);
+            AddRatioBreaker(builder, key, breakDuration, shouldHandle);
+        });
+    }
 
-                builder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
-                {
-                    BreakDuration = breakDuration,
-                    SamplingDuration = TimeSpan.FromHours(24),
-                    FailureRatio = ratio,
-                    MinimumThroughput = minThroughput,
-                    ShouldHandle = shouldHandle,
-                    OnOpened = CreateOnOpenedHandler<TResult>($"{key}:Consecutive"),
-                    OnClosed = CreateOnClosedHandler<TResult>($"{key}:Consecutive"),
-                    OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:Consecutive"),
-                });
-            }
+    private PredicateBuilder<TResult> BuildPredicate<TResult>()
+    {
+        return new PredicateBuilder<TResult>()
+            .Handle<Exception>(ex => handledExceptions.Count == 0 || handledExceptions.Exists(p => p(ex)))
+            .HandleResult(IsHandledResult);
+    }
 
-            if (failureRatio.HasValue)
-            {
-                var samplingDuration = samplingDurationMs.HasValue
-                    ? TimeSpan.FromMilliseconds(samplingDurationMs.Value)
-                    : TimeSpan.FromSeconds(30);
+    private bool IsHandledResult<TResult>(TResult result)
+    {
+        return handledResultPredicates.OfType<Func<TResult, bool>>().Any(predicate => predicate(result));
+    }
 
-                var minThroughput = minimumThroughput.HasValue
-                    ? Math.Max(2, minimumThroughput.Value)
-                    : 2;
+    private void AddConsecutiveBreaker<TResult>(
+        ResiliencePipelineBuilder<TResult> builder,
+        string key,
+        TimeSpan breakDuration,
+        PredicateBuilder<TResult> shouldHandle)
+    {
+        if (!consecutiveFailureThreshold.HasValue)
+        {
+            return;
+        }
 
-                builder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
-                {
-                    BreakDuration = breakDuration,
-                    SamplingDuration = samplingDuration,
-                    FailureRatio = failureRatio.Value,
-                    MinimumThroughput = minThroughput,
-                    ShouldHandle = shouldHandle,
-                    OnOpened = CreateOnOpenedHandler<TResult>($"{key}:Ratio"),
-                    OnClosed = CreateOnClosedHandler<TResult>($"{key}:Ratio"),
-                    OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:Ratio"),
-                });
-            }
+        var threshold = consecutiveFailureThreshold.Value;
+        var minThroughput = Math.Max(2, threshold);
+        var ratio = threshold < 2 ? 0.5 : 1.0;
+
+        builder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
+        {
+            BreakDuration = breakDuration,
+            SamplingDuration = TimeSpan.FromHours(24),
+            FailureRatio = ratio,
+            MinimumThroughput = minThroughput,
+            ShouldHandle = shouldHandle,
+            OnOpened = CreateOnOpenedHandler<TResult>($"{key}:Consecutive"),
+            OnClosed = CreateOnClosedHandler<TResult>($"{key}:Consecutive"),
+            OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:Consecutive"),
+        });
+    }
+
+    private void AddRatioBreaker<TResult>(
+        ResiliencePipelineBuilder<TResult> builder,
+        string key,
+        TimeSpan breakDuration,
+        PredicateBuilder<TResult> shouldHandle)
+    {
+        if (!failureRatio.HasValue)
+        {
+            return;
+        }
+
+        var samplingDuration = samplingDurationMs.HasValue
+            ? TimeSpan.FromMilliseconds(samplingDurationMs.Value)
+            : TimeSpan.FromSeconds(30);
+
+        var minThroughput = minimumThroughput.HasValue
+            ? Math.Max(2, minimumThroughput.Value)
+            : 2;
+
+        builder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
+        {
+            BreakDuration = breakDuration,
+            SamplingDuration = samplingDuration,
+            FailureRatio = failureRatio.Value,
+            MinimumThroughput = minThroughput,
+            ShouldHandle = shouldHandle,
+            OnOpened = CreateOnOpenedHandler<TResult>($"{key}:Ratio"),
+            OnClosed = CreateOnClosedHandler<TResult>($"{key}:Ratio"),
+            OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:Ratio"),
         });
     }
 

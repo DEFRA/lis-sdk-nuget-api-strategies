@@ -57,6 +57,7 @@ public class CircuitBreakerStrategyTests
     {
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
             .WithActionDescription("Test")
+            .WithCancellationToken(CancellationToken.None)
             .WithConsecutiveFailureThreshold(3)
             .WithAction(_ => Task.CompletedTask);
 
@@ -65,10 +66,24 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenCancellationTokenNull_ThrowsInvalidOperationException()
+    {
+        var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
+            .WithLogger(logger)
+            .WithActionDescription("Test")
+            .WithConsecutiveFailureThreshold(3)
+            .WithAction(_ => Task.CompletedTask);
+
+        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        ex.Message.ShouldBe(StrategyConstants.Errors.CancellationTokenRequired);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenActionDescriptionNull_ThrowsInvalidOperationException()
     {
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
             .WithLogger(logger)
+            .WithCancellationToken(CancellationToken.None)
             .WithConsecutiveFailureThreshold(3)
             .WithAction(_ => Task.CompletedTask);
 
@@ -486,6 +501,7 @@ public class CircuitBreakerStrategyTests
     {
         var s = new CircuitBreakerStrategy<TestService>(pipelineRegistry);
         s.WithLogger(logger);
+        s.WithCancellationToken(CancellationToken.None);
         s.WithActionDescription("TestAction");
         return s;
     }

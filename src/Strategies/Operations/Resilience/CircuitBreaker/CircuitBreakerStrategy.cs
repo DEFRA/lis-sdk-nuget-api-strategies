@@ -232,7 +232,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
         var pipeline = GetOrCreatePipeline<TResult>(resolvedKey);
 
-        var ct = CancellationToken ?? System.Threading.CancellationToken.None;
+        var ct = CancellationToken!.Value;
 
         try
         {
@@ -275,6 +275,11 @@ public sealed partial class CircuitBreakerStrategy<TService>
         if (Logger == null)
         {
             throw new InvalidOperationException(StrategyConstants.Errors.LoggerRequired);
+        }
+
+        if (CancellationToken == null)
+        {
+            throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
         }
 
         if (ActionDescription == null)

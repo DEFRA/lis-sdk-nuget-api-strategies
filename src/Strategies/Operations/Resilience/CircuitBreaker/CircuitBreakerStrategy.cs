@@ -407,9 +407,9 @@ public sealed partial class CircuitBreakerStrategy<TService>
             FailureRatio = ratio,
             MinimumThroughput = minThroughput,
             ShouldHandle = shouldHandle,
-            OnOpened = CreateOnOpenedHandler<TResult>($"{key}:Consecutive"),
-            OnClosed = CreateOnClosedHandler<TResult>($"{key}:Consecutive"),
-            OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:Consecutive"),
+            OnOpened = CreateOnOpenedHandler<TResult>($"{key}:consecutive"),
+            OnClosed = CreateOnClosedHandler<TResult>($"{key}:consecutive"),
+            OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:consecutive"),
         });
     }
 
@@ -439,9 +439,9 @@ public sealed partial class CircuitBreakerStrategy<TService>
             FailureRatio = FailureRatio.Value,
             MinimumThroughput = minThroughput,
             ShouldHandle = shouldHandle,
-            OnOpened = CreateOnOpenedHandler<TResult>($"{key}:Ratio"),
-            OnClosed = CreateOnClosedHandler<TResult>($"{key}:Ratio"),
-            OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:Ratio"),
+            OnOpened = CreateOnOpenedHandler<TResult>($"{key}:ratio"),
+            OnClosed = CreateOnClosedHandler<TResult>($"{key}:ratio"),
+            OnHalfOpened = CreateOnHalfOpenedHandler($"{key}:ratio"),
         });
     }
 

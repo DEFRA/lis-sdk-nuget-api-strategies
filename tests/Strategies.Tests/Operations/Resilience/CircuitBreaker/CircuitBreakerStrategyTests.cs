@@ -125,18 +125,22 @@ public class CircuitBreakerStrategyTests
     public async Task ExecuteAsync_WhenNoActionConfigured_ShouldThrowInvalidOperationException()
     {
         var strategy = CreateStrategy()
+            .WithCircuitKey("no-action-key")
             .WithConsecutiveFailureThreshold(3);
 
-        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        ex.Message.ShouldBe("Action to execute has not been configured.");
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenNoThresholdConfigured_ShouldThrowInvalidOperationException()
     {
         var strategy = CreateStrategy()
+            .WithCircuitKey("no-threshold-key")
             .WithAction(_ => Task.CompletedTask);
 
-        await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        var ex = await Should.ThrowAsync<InvalidOperationException>(() => strategy.ExecuteAsync());
+        ex.Message.ShouldBe("Circuit breaker must be configured with at least one threshold.");
     }
 
     [Fact]

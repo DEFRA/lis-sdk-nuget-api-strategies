@@ -308,7 +308,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
         if (ConsecutiveFailureThreshold == null && FailureRatio == null)
         {
             throw new InvalidOperationException(
-                "Circuit breaker must be configured with at least one threshold: call WithConsecutiveFailureThreshold(...) or WithFailureRatio(...) (or configure factory defaults).");
+                "Circuit breaker must be configured with at least one threshold.");
         }
     }
 

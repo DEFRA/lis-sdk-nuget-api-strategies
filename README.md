@@ -11,6 +11,7 @@ This package provides fluent strategy builders, factories, and associated compon
 - **Repository Interactions** (Create, Get, GetList, GetPaged, Update, Upsert)
 - **SOAP API Interactions** (XML/SOAP payloads, XSD schema validations, transformations)
 - **REST API Interactions** (HTTP methods, resource URLs, query parameters, JSON payloads, transformations)
+- **Circuit Breaker Resilience** (Consecutive failure counts, failure ratio, sampling window, minimum throughput, half-open probing, fallback)
 
 ---
 
@@ -34,6 +35,7 @@ services.AddStrategyValidators();
 services.AddRepoStrategyFactory<MyService>();
 services.AddSoapStrategyFactory<MyService>();
 services.AddRestStrategyFactory<MyService>();
+services.AddCircuitBreakerStrategyFactory<MyService>();
 ```
 
 ---
@@ -689,4 +691,187 @@ await _restFactory.BuildRestStrategy()
     .WithResourceUrl("/api/v1/movements/MOV-12345")
     .WithHeader("X-Correlation-ID", Guid.NewGuid().ToString())
     .ExecuteWithoutResponse();
+```
+
+---
+
+## 4. Circuit Breaker Strategy (`ICircuitBreakerStrategyFactory<TService>`)
+
+The Circuit Breaker strategy builder and factory provide resilience protection for external calls (REST, SOAP, databases, message queues, third-party integrations) using Polly v8 resilience pipelines.
+
+### Registering and Injecting Circuit Breaker Strategy Factory
+
+Register the factory via `IServiceCollection`:
+```csharp
+services.AddCircuitBreakerStrategyFactory<MyService>();
+```
+
+Inject and preconfigure factory defaults in your consuming service constructor:
+```csharp
+public class ExternalLivestockService
+{
+    private readonly ICircuitBreakerStrategyFactory<ExternalLivestockService> _circuitBreakerFactory;
+
+    public ExternalLivestockService(
+        ICircuitBreakerStrategyFactory<ExternalLivestockService> circuitBreakerFactory,
+        ILogger<ExternalLivestockService> logger,
+        IOperatorContext operatorContext)
+    {
+        _circuitBreakerFactory = circuitBreakerFactory
+            .WithDefaultLogger(logger)
+            .WithDefaultOperatorContext(operatorContext)
+            .WithDefaultCircuitKey("LivestockExternalApi")
+            .WithDefaultConsecutiveFailureThreshold(3)
+            .WithDefaultDurationOfBreak(30000) // 30,000 ms (30 seconds)
+            .WithDefaultHandledException<HttpRequestException>()
+            .WithDefaultHandledException<TimeoutException>();
+    }
+}
+```
+
+### Shared Circuit Breaker State & `WithDefaultCircuitKey`
+
+Circuit breaker resilience pipelines are managed through a singleton `ResiliencePipelineRegistry<string>` registered in DI, allowing circuit health and failure states to be **shared across requests and threads**.
+
+> **Important**: Setting `WithDefaultCircuitKey(circuitKey)` on the factory assigns that key to all strategies produced by `BuildCircuitBreakerStrategy()`. This puts all subsequent operations created by that factory on the **exact same circuit breaker**. If the circuit trips due to failures in one operation or request, all other operations sharing that circuit key will immediately fast-fail (or execute their configured fallback) without hitting downstream dependencies.
+
+### Factory Defaults for Circuit Breaker Strategies (`ICircuitBreakerStrategyFactory<TService>`)
+
+The factory exposes the following methods to establish default options inherited by all created strategy instances:
+- `WithDefaultCircuitKey(string circuitKey)` - Sets default circuit key identifier.
+- `WithDefaultConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets default consecutive failure count before tripping.
+- `WithDefaultFailureRatio(double failureRatio)` - Sets default failure ratio threshold (`0.001` to `1.0`).
+- `WithDefaultSamplingDuration(int samplingDurationMs)` - Sets default sampling time window in milliseconds.
+- `WithDefaultMinimumThroughput(int minimumThroughput)` - Sets default minimum request count within sampling window.
+- `WithDefaultDurationOfBreak(int durationOfBreakMs)` - Sets default duration in milliseconds the circuit remains open.
+- `WithDefaultHandledException<TException>()` - Registers a default exception type treated as failure.
+- `WithDefaultHandledException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate treated as failure.
+- `WithDefaultOnBreak(Action<Exception, TimeSpan> onBreakAction)` - Sets default callback when circuit opens.
+- `WithDefaultOnReset(Action onResetAction)` - Sets default callback when circuit resets to closed.
+- `WithDefaultOnHalfOpen(Action onHalfOpenAction)` - Sets default callback when circuit enters half-open state.
+- `BuildCircuitBreakerStrategy()` - Creates an `ICircuitBreakerStrategy<TService>` instance pre-populated with factory defaults.
+
+### Minimum and Allowed Parameter Values
+
+When providing values to either the factory defaults or strategy builder methods, the following constraints apply:
+- **`ConsecutiveFailureThreshold`**: Minimum value is `1` failure (`ArgumentOutOfRangeException` thrown if `< 1`).
+- **`FailureRatio`**: Range must be between `0.001` (0.1%) and `1.0` (100%) (`ArgumentOutOfRangeException` thrown if outside this range).
+- **`SamplingDuration` (ms)**: Minimum value is `1` millisecond (`ArgumentOutOfRangeException` thrown if `< 1`). If omitted, defaults to `30,000` ms (30s).
+- **`MinimumThroughput`**: Minimum value is `1` request (`ArgumentOutOfRangeException` thrown if `< 1`). If omitted, defaults to `2`.
+- **`DurationOfBreak` (ms)**: Minimum value is `1` millisecond (`ArgumentOutOfRangeException` thrown if `< 1`). If omitted, defaults to `30,000` ms (30s).
+- **Threshold Requirement**: At least one threshold must be configured (`WithConsecutiveFailureThreshold`, `WithFailureRatio`, or both). If neither is configured, `InvalidOperationException` is thrown upon execution.
+- **Circuit Key & CancellationToken Requirement**: Both `CircuitKey` (non-empty string) and `CancellationToken` are mandatory for execution; omitting either throws `InvalidOperationException`.
+
+### Circuit Breaker Strategy Fluent Methods (`ICircuitBreakerStrategy<TService>`)
+
+Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
+
+#### Configuration:
+- `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"`.
+- `WithConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets consecutive failure threshold (min `1`).
+- `WithFailureRatio(double failureRatio)` - Sets failure ratio threshold (min `0.001`, max `1.0`).
+- `WithSamplingDuration(int samplingDurationMs)` - Sets sampling window in milliseconds (min `1`).
+- `WithMinimumThroughput(int minimumThroughput)` - Sets minimum throughput before failure ratio is evaluated (min `1`).
+- `WithDurationOfBreak(int durationOfBreakMs)` - Sets break duration in milliseconds (min `1`).
+- `WithHandledException<TException>()` - Specifies an exception type contributing to circuit failures.
+- `WithHandledException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions contributing to failures.
+- `WithHandledResult<TResult>(Func<TResult, bool> predicate)` - Specifies a predicate treating returned result models as failures.
+
+#### Protected Actions & Fallbacks:
+- `WithAction(Func<CancellationToken, Task> action)` - Configures a void / `Task` async action to protect.
+- `WithAction<TResult>(Func<CancellationToken, Task<TResult>> action)` - Configures a result-returning (`Task<TResult>`) async action to protect.
+- `WithFallback(Func<CancellationToken, Task> fallbackAction)` - Configures a fallback action for void / `Task` operations.
+- `WithFallback<TResult>(Func<CancellationToken, Task<TResult>> fallbackAction)` - Configures a fallback action for `Task<TResult>` operations.
+
+#### Exception Handling & Rethrow Semantics:
+- **Default Handled Exceptions**: If no `WithHandledException` is configured, **all exceptions are handled by default** (`HandledExceptions.Count == 0`).
+- **Handled Exceptions Rethrown Without Fallback**: If an execution encounters a handled exception and **no fallback is configured** (`WithFallback` is omitted), the failure is recorded by Polly to update circuit statistics, logged as a warning, and the exception is **rethrown (`throw;`) directly to the caller**.
+- **Fallback Invocation**: When a fallback is provided, handled exceptions and open circuit rejections will invoke the fallback delegate and return its result rather than throwing.
+- **Circuit Breaker Open Exception**: When the circuit is `Open` and no fallback is configured, attempting execution throws a `CircuitBreakerOpenException`.
+
+#### Lifecycle Callbacks (`On...` Methods):
+The `On...` methods are **optional** lifecycle hooks for observability, metric emission, or alerting:
+- **`OnBreak(Action<Exception, TimeSpan> onBreakAction)`**: Invoked when the circuit trips from Closed or Half-Open to **Open**. Passes the triggering `Exception` and the `TimeSpan` break duration.
+- **`OnReset(Action onResetAction)`**: Invoked when the circuit successfully recovers and resets to **Closed** (healthy). Normal traffic resumes.
+- **`OnHalfOpen(Action onHalfOpenAction)`**: Invoked when the break duration expires and the circuit transitions to **Half-Open**. In this state, Polly allows a single trial probe call through to test downstream health while blocking concurrent requests.
+
+#### Multi-Breaker Behavior:
+The builder allows configuring **both** `WithConsecutiveFailureThreshold` and `WithFailureRatio` on the same strategy:
+- When both are specified, Polly builds a composite pipeline containing two independent circuit breakers:
+  - `{circuitKey}:consecutive` (consecutive failure count breaker)
+  - `{circuitKey}:ratio` (sliding window rate-based breaker)
+- Each breaker manages its own state machine, counters, and timers independently.
+- **Tripping Condition**: The circuit breaks if **either** condition is met (e.g. fast break on 3 consecutive failures **or** if 50% of requests fail over a 60-second window).
+- When either breaker opens, calls are blocked and handled according to the fallback or exception rethrow logic.
+
+#### Execution Methods:
+- `ExecuteAsync()` - Executes a void / `Task` action within the circuit breaker.
+- `ExecuteAsync<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
+
+---
+
+### Examples
+
+#### 1. Void / `Task` Operation with Consecutive Failure Count:
+```csharp
+await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+    .WithCancellationToken(cancellationToken)
+    .WithActionDescription("Delete Animal Record")
+    .WithCircuitKey("AnimalDeletionApi")
+    .WithConsecutiveFailureThreshold(3)
+    .WithDurationOfBreak(30000) // 30 seconds
+    .WithHandledException<HttpRequestException>()
+    .WithAction(async ct => await _apiClient.DeleteAnimalAsync(animalId, ct))
+    .WithFallback(async ct => await _deadLetterQueue.EnqueueDeleteAsync(animalId, ct))
+    .ExecuteAsync();
+```
+
+#### 2. Generic `Task<TResult>` Operation with Failure Ratio:
+```csharp
+AnimalDto animal = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+    .WithCancellationToken(cancellationToken)
+    .WithActionDescription("Get Animal Details")
+    .WithCircuitKey("AnimalLookupApi")
+    .WithFailureRatio(0.5) // Trip if 50% fail
+    .WithSamplingDuration(30000) // 30-second sliding window
+    .WithMinimumThroughput(10) // Require at least 10 requests in window
+    .WithDurationOfBreak(15000) // 15-second break
+    .WithHandledException<HttpRequestException>()
+    .WithHandledException<TimeoutException>()
+    .WithAction(async ct => await _apiClient.GetAnimalAsync(tagNumber, ct))
+    .WithFallback(async ct => await _cacheService.GetAnimalAsync(tagNumber, ct))
+    .ExecuteAsync<AnimalDto>();
+```
+
+#### 3. Multi-Breaker (Consecutive + Ratio-Based) without Fallback (Exceptions Rethrown):
+```csharp
+// Handled exceptions are rethrown to caller when WithFallback is omitted
+try
+{
+    MovementResult result = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+        .WithCancellationToken(cancellationToken)
+        .WithActionDescription("Process Movement")
+        .WithCircuitKey("MovementProcessingApi")
+        .WithConsecutiveFailureThreshold(5) // Fast break on 5 consecutive failures
+        .WithFailureRatio(0.4) // OR break if 40% fail over 60 seconds
+        .WithSamplingDuration(60000)
+        .WithMinimumThroughput(20)
+        .WithDurationOfBreak(45000)
+        .OnBreak((ex, duration) => _alertService.NotifyCircuitOpened("MovementProcessingApi", ex, duration))
+        .OnReset(() => _alertService.NotifyCircuitRecovered("MovementProcessingApi"))
+        .WithAction(async ct => await _movementClient.ProcessAsync(movementRequest, ct))
+        .ExecuteAsync<MovementResult>();
+}
+catch (CircuitBreakerOpenException ex)
+{
+    // Thrown when circuit is open and no fallback is configured
+    _logger.LogError(ex, "Circuit is currently open. Movement processing blocked.");
+    throw;
+}
+catch (HttpRequestException ex)
+{
+    // Handled exception rethrown to caller after updating circuit failure metrics
+    _logger.LogError(ex, "HTTP call failed.");
+    throw;
+}
 ```

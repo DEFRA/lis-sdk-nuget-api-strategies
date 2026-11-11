@@ -108,6 +108,7 @@ public class CircuitBreakerStrategyFactoryTests
 
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("Logger", flags)?.GetValue(cbStrategy).ShouldBe(logger);
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("CircuitKey", flags)?.GetValue(cbStrategy).ShouldBe("my-shared-circuit");
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("TargetDescription", flags)?.GetValue(cbStrategy).ShouldBe("circuit-breaker-my-shared-circuit");
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("ConsecutiveFailureThreshold", flags)?.GetValue(cbStrategy).ShouldBe(4);
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("FailureRatio", flags)?.GetValue(cbStrategy).ShouldBe(0.3);
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("SamplingDurationMs", flags)?.GetValue(cbStrategy).ShouldBe(20000);

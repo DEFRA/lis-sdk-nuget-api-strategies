@@ -18,6 +18,10 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Registry;
 
+/// <summary>
+/// Circuit Breaker strategy builder.
+/// </summary>
+/// <typeparam name="TService">The type of the service class that is consuming the builder.</typeparam>
 public sealed partial class CircuitBreakerStrategy<TService>
     : StrategyBase<TService, ICircuitBreakerStrategy<TService>>,
         ICircuitBreakerStrategy<TService>
@@ -26,8 +30,8 @@ public sealed partial class CircuitBreakerStrategy<TService>
     public CircuitBreakerStrategy(ResiliencePipelineRegistry<string> pipelineRegistry)
     {
         PipelineRegistry = pipelineRegistry;
+
         SetParentBuilder(this);
-        TargetDescription = "Circuit Breaker";
     }
 
     private ResiliencePipelineRegistry<string> PipelineRegistry { get; set; }
@@ -63,7 +67,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
         ArgumentException.ThrowIfNullOrWhiteSpace(circuitKey);
 
         CircuitKey = circuitKey;
-        TargetDescription = circuitKey;
+        TargetDescription = $"circuit-breaker-{circuitKey}";
 
         return this;
     }

@@ -5,6 +5,7 @@
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Resilience.CircuitBreaker;
 
 using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
@@ -28,6 +29,19 @@ public class CircuitBreakerStrategyTests
     public CircuitBreakerStrategyTests()
     {
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+    }
+
+    [Fact]
+    public void WithCircuitKey_SetsCircuitKeyAndTargetDescription()
+    {
+        var strategy = CreateStrategy();
+        strategy.WithCircuitKey("my-circuit-key");
+
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("CircuitKey", flags)?.GetValue(strategy)
+            .ShouldBe("my-circuit-key");
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("TargetDescription", flags)?.GetValue(strategy)
+            .ShouldBe("circuit-breaker-my-circuit-key");
     }
 
     [Fact]

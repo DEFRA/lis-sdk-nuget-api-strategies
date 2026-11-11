@@ -84,9 +84,10 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddCircuitBreakerStrategyFactory<TService>()
             where TService : class
         {
-            var isRegistryRegistered = services.Any(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
+            var isResiliencePipelineRegistryRegistered =
+                services.Any(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
 
-            if (!isRegistryRegistered)
+            if (!isResiliencePipelineRegistryRegistered)
             {
                 services.AddSingleton<ResiliencePipelineRegistry<string>>();
             }

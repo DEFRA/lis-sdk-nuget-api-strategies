@@ -42,7 +42,7 @@ public class SoapSchemaBuilder : ISoapSchemaBuilder
 
             if (!File.Exists(resolvedPath))
             {
-                throw new SoapSchemaException($"Schema file '{schemaFile}' not found.");
+                throw new SoapSchemaBuilderException($"Schema file '{schemaFile}' not found.");
             }
 
             var fullPath = Path.GetFullPath(resolvedPath);
@@ -71,14 +71,14 @@ public class SoapSchemaBuilder : ISoapSchemaBuilder
 
         if (matchedResourceName == null)
         {
-            throw new SoapSchemaException(
+            throw new SoapSchemaBuilderException(
                 $"No embedded schema resources found in assembly '{assembly.FullName}' matching resource namespace '{resourceNamespace}'");
         }
 
         soapSchemaXmlResolver.RegisterResource(assembly, matchedResourceName);
 
         using var stream = assembly.GetManifestResourceStream(matchedResourceName)
-                           ?? throw new SoapSchemaException(
+                           ?? throw new SoapSchemaBuilderException(
                                $"Unable to open embedded resource stream for '{matchedResourceName}'");
 
         var settings = new XmlReaderSettings { XmlResolver = soapSchemaXmlResolver };
@@ -96,7 +96,7 @@ public class SoapSchemaBuilder : ISoapSchemaBuilder
     {
         if (schemaSet.Count == 0)
         {
-            throw new SoapSchemaException("At least one schema must be added to the schema builder.");
+            throw new SoapSchemaBuilderException("At least one schema must be added to the schema builder.");
         }
 
         schemaSet.Compile();

@@ -13,7 +13,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Handlers;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using HttpRequestException = System.Net.Http.HttpRequestException;
 
 public class RestHttpClientTests
 {

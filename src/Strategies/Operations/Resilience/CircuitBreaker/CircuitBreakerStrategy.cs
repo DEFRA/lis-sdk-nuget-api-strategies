@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
@@ -38,7 +40,16 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     private List<Func<Exception, bool>> HandledExceptions { get; } = [];
 
-    private List<Func<Exception, bool>> ExcludedExceptions { get; } = [];
+    private List<Func<Exception, bool>> ExcludedExceptions { get; } =
+    [
+        ex => ex is StrategyPreConditionException,
+        ex => ex is ArgumentException,
+        ex => ex is ArgumentNullException,
+        ex => ex is ArgumentOutOfRangeException,
+        ex => ex is InvalidOperationException,
+        ex => ex is UnauthorizedAccessException,
+        ex => ex is XmlSchemaValidationException,
+    ];
 
     private List<Delegate> HandledResultPredicates { get; } = [];
 

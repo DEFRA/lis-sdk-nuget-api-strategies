@@ -746,6 +746,8 @@ The factory exposes the following methods to establish default options inherited
 - `WithDefaultDurationOfBreak(int durationOfBreakMs)` - Sets default duration in milliseconds the circuit remains open.
 - `WithDefaultHandledException<TException>()` - Registers a default exception type treated as failure.
 - `WithDefaultHandledException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate treated as failure.
+- `WithDefaultExcludedException<TException>()` - Registers a default exception type explicitly excluded from contributing to circuit failures.
+- `WithDefaultExcludedException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate explicitly excluded from contributing to circuit failures.
 - `WithDefaultOnBreak(Action<Exception, TimeSpan> onBreakAction)` - Sets default callback when circuit opens.
 - `WithDefaultOnReset(Action onResetAction)` - Sets default callback when circuit resets to closed.
 - `WithDefaultOnHalfOpen(Action onHalfOpenAction)` - Sets default callback when circuit enters half-open state.
@@ -775,6 +777,8 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 - `WithDurationOfBreak(int durationOfBreakMs)` - Sets break duration in milliseconds (min `1`).
 - `WithHandledException<TException>()` - Specifies an exception type contributing to circuit failures.
 - `WithHandledException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions contributing to failures.
+- `WithExcludedException<TException>()` - Specifies an exception type explicitly excluded from contributing to circuit failures.
+- `WithExcludedException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions explicitly excluded from contributing to failures.
 - `WithHandledResult<TResult>(Func<TResult, bool> predicate)` - Specifies a predicate treating returned result models as failures.
 
 #### Protected Actions & Fallbacks:
@@ -785,6 +789,7 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 
 #### Exception Handling & Rethrow Semantics:
 - **Default Handled Exceptions**: If no `WithHandledException` is configured, **all exceptions are handled by default** (`HandledExceptions.Count == 0`).
+- **Excluded Exceptions**: Exceptions matching `WithExcludedException` take strict precedence over handled exceptions. They **never contribute to opening the circuit breaker**, **bypass fallback handling**, and **propagate directly to the caller**.
 - **Caller Cancellation Excluded**: If the operation throws `OperationCanceledException` and cancellation was requested by the caller's cancellation token, this is **not treated as a circuit failure** and will not trip the circuit breaker.
 - **Handled Exceptions Rethrown Without Fallback**: If an execution encounters a handled exception and **no fallback is configured** (`WithFallback` is omitted), the failure is recorded by Polly to update circuit statistics, logged as a warning, and the exception is **rethrown (`throw;`) directly to the caller**.
 - **Fallback Invocation**: When a fallback is provided, handled exceptions and open circuit rejections will invoke the fallback delegate and return its result rather than throwing.

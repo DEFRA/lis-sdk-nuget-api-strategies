@@ -29,6 +29,8 @@ public sealed class CircuitBreakerStrategyFactory<TService>
 
     private List<Func<Exception, bool>> DefaultHandledExceptions { get; } = [];
 
+    private List<Func<Exception, bool>> DefaultExcludedExceptions { get; } = [];
+
     private string? DefaultCircuitKey { get; set; }
 
     private int? DefaultConsecutiveFailureThreshold { get; set; }
@@ -120,6 +122,23 @@ public sealed class CircuitBreakerStrategyFactory<TService>
         return GetParentFactory();
     }
 
+    public ICircuitBreakerStrategyFactory<TService> WithDefaultExcludedException<TException>()
+        where TException : Exception
+    {
+        DefaultExcludedExceptions.Add(ex => ex is TException);
+
+        return GetParentFactory();
+    }
+
+    public ICircuitBreakerStrategyFactory<TService> WithDefaultExcludedException(Func<Exception, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        DefaultExcludedExceptions.Add(predicate);
+
+        return GetParentFactory();
+    }
+
     public ICircuitBreakerStrategyFactory<TService> WithDefaultOnBreak(Action<Exception, TimeSpan> onBreakAction)
     {
         ArgumentNullException.ThrowIfNull(onBreakAction);
@@ -194,6 +213,11 @@ public sealed class CircuitBreakerStrategyFactory<TService>
         foreach (var handledException in DefaultHandledExceptions)
         {
             strategyBuilder.WithHandledException(handledException);
+        }
+
+        foreach (var excludedException in DefaultExcludedExceptions)
+        {
+            strategyBuilder.WithExcludedException(excludedException);
         }
 
         if (DefaultOnBreakAction != null)

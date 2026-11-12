@@ -5,6 +5,7 @@
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Http.Rest.Client;
 
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Rest.Client;
@@ -12,6 +13,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Handlers;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using HttpRequestException = System.Net.Http.HttpRequestException;
 
 public class RestHttpClientTests
 {

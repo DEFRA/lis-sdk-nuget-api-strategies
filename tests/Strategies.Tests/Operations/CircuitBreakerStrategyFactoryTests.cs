@@ -43,6 +43,8 @@ public class CircuitBreakerStrategyFactoryTests
         factory.WithDefaultDurationOfBreak(15000).ShouldBe(factory);
         factory.WithDefaultHandledException<HttpRequestException>().ShouldBe(factory);
         factory.WithDefaultHandledException(ex => ex is TimeoutException).ShouldBe(factory);
+        factory.WithDefaultExcludedException<ArgumentException>().ShouldBe(factory);
+        factory.WithDefaultExcludedException(ex => ex is InvalidOperationException).ShouldBe(factory);
         factory.WithDefaultOnBreak((_, _) => { }).ShouldBe(factory);
         factory.WithDefaultOnReset(() => { }).ShouldBe(factory);
         factory.WithDefaultOnHalfOpen(() => { }).ShouldBe(factory);
@@ -63,6 +65,7 @@ public class CircuitBreakerStrategyFactoryTests
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultMinimumThroughput(0));
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultDurationOfBreak(0));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultHandledException(null!));
+        Should.Throw<ArgumentNullException>(() => factory.WithDefaultExcludedException(null!));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultOnBreak(null!));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultOnReset(null!));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultOnHalfOpen(null!));
@@ -88,6 +91,7 @@ public class CircuitBreakerStrategyFactoryTests
             .WithDefaultMinimumThroughput(8)
             .WithDefaultDurationOfBreak(5000)
             .WithDefaultHandledException<InvalidOperationException>()
+            .WithDefaultExcludedException<ArgumentException>()
             .WithDefaultOnBreak((_, _) => onBreakCalled = true)
             .WithDefaultOnReset(() => onResetCalled = true)
             .WithDefaultOnHalfOpen(() => onHalfOpenCalled = true);

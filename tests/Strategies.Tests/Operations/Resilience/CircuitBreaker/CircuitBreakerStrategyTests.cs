@@ -67,6 +67,7 @@ public class CircuitBreakerStrategyTests
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithMinimumThroughput(0));
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithDurationOfBreak(0));
         Should.Throw<ArgumentNullException>(() => strategy.WithHandledException(null!));
+        Should.Throw<ArgumentNullException>(() => strategy.WithExcludedException(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithHandledResult<int>(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithFallback(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithFallback<string>(null!));
@@ -698,6 +699,106 @@ public class CircuitBreakerStrategyTests
         var healthyResult = await healthyStrategy.ExecuteAsync<string>();
 
         healthyResult.ShouldBe("healthy-success");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenExcludedExceptionTypeThrown_DoesNotTripCircuitAndDoesNotExecuteFallback()
+    {
+        // Arrange
+        var onBreakCalled = false;
+        var fallbackCalled = false;
+
+        var strategy = CreateStrategy()
+            .WithCircuitKey("excluded-type-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithExcludedException<ArgumentException>()
+            .WithFallback(_ =>
+            {
+                fallbackCalled = true;
+                return Task.CompletedTask;
+            })
+            .OnBreak((_, _) => onBreakCalled = true)
+            .WithAction(_ => throw new ArgumentException("excluded argument error"));
+
+        // Act & Assert
+        // Consecutive calls with excluded exception should throw ArgumentException directly
+        await Should.ThrowAsync<ArgumentException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<ArgumentException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<ArgumentException>(strategy.ExecuteAsync);
+
+        onBreakCalled.ShouldBeFalse();
+        fallbackCalled.ShouldBeFalse();
+
+        // Verify circuit is still closed and healthy
+        var healthyStrategy = CreateStrategy()
+            .WithCircuitKey("excluded-type-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithAction(_ => Task.FromResult("healthy"));
+
+        var healthyResult = await healthyStrategy.ExecuteAsync<string>();
+        healthyResult.ShouldBe("healthy");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenExcludedExceptionPredicateMatched_DoesNotTripCircuitAndDoesNotExecuteFallback()
+    {
+        // Arrange
+        var onBreakCalled = false;
+        var fallbackCalled = false;
+
+        var strategy = CreateStrategy()
+            .WithCircuitKey("excluded-predicate-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithExcludedException(ex =>
+                ex is InvalidOperationException && ex.Message.Contains("skip-breaker", StringComparison.Ordinal))
+            .WithFallback<string>(_ =>
+            {
+                fallbackCalled = true;
+                return Task.FromResult("fallback");
+            })
+            .OnBreak((_, _) => onBreakCalled = true)
+            .WithAction<string>(_ => throw new InvalidOperationException("skip-breaker: validation failed"));
+
+        // Act & Assert
+        await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync<string>);
+
+        onBreakCalled.ShouldBeFalse();
+        fallbackCalled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenExcludedExceptionPrecedenceOverHandledException_ExclusionWins()
+    {
+        // Arrange
+        var onBreakCalled = false;
+        var fallbackCalled = false;
+
+        var strategy = CreateStrategy()
+            .WithCircuitKey("precedence-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithHandledException<Exception>()
+            .WithExcludedException<ArgumentNullException>()
+            .WithFallback<string>(_ =>
+            {
+                fallbackCalled = true;
+                return Task.FromResult("fallback");
+            })
+            .OnBreak((_, _) => onBreakCalled = true)
+#pragma warning disable S3928
+            // ReSharper disable once NotResolvedInText
+            .WithAction<string>(_ => throw new ArgumentNullException(paramName: "param"));
+#pragma warning restore S3928
+
+        // Act & Assert
+        // Excluded ArgumentNullException should bypass fallback and not trip circuit despite WithHandledException<Exception>()
+        await Should.ThrowAsync<ArgumentNullException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<ArgumentNullException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<ArgumentNullException>(strategy.ExecuteAsync<string>);
+
+        onBreakCalled.ShouldBeFalse();
+        fallbackCalled.ShouldBeFalse();
     }
 
     private CircuitBreakerStrategy<TestService> CreateStrategy()

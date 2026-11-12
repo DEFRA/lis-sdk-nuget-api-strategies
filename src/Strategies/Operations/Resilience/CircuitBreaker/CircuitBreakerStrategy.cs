@@ -376,7 +376,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
     private PredicateBuilder<TResult> BuildPredicate<TResult>()
     {
         return new PredicateBuilder<TResult>()
-            .Handle<Exception>(ex => HandledExceptions.Count == 0 || HandledExceptions.Exists(p => p(ex)))
+            .Handle<Exception>(IsHandledException)
             .HandleResult(IsHandledResult);
     }
 
@@ -477,6 +477,11 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     private bool IsHandledException(Exception ex)
     {
+        if (ex is OperationCanceledException && CancellationToken?.IsCancellationRequested == true)
+        {
+            return false;
+        }
+
         return HandledExceptions.Count == 0 || HandledExceptions.Any(predicate => predicate(ex));
     }
 }

@@ -2,6 +2,7 @@
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
+// ReSharper disable AccessToModifiedClosure
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Resilience.CircuitBreaker;
 
 using System;
@@ -603,6 +604,7 @@ public class CircuitBreakerStrategyTests
     {
         // Arrange
         var onBreakCalled = false;
+
         var strategy = CreateStrategy()
             .WithCircuitKey("threshold-one-key")
             .WithConsecutiveFailureThreshold(1)
@@ -652,6 +654,50 @@ public class CircuitBreakerStrategyTests
 
         // Assert
         result.ShouldBe("explicit-key-result");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCallerCancelsToken_DoesNotTripCircuit()
+    {
+        // Arrange
+        var onBreakCalled = false;
+        using var cts = new CancellationTokenSource();
+
+        await cts.CancelAsync();
+
+        var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
+            .WithLogger(logger)
+            .WithCancellationToken(cts.Token)
+            .WithActionDescription("CanceledAction")
+            .WithCircuitKey("cancellation-test-key")
+            .WithConsecutiveFailureThreshold(2)
+            .OnBreak((_, _) => onBreakCalled = true)
+            .WithAction(ct =>
+            {
+                ct.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+
+        // Act & Assert
+        // Consecutive calls with caller cancellation should throw OperationCanceledException but NOT trip the circuit
+        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
+
+        onBreakCalled.ShouldBeFalse();
+
+        // Now execute with a non-canceled token to verify the circuit is still healthy and closed
+        var healthyStrategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
+            .WithLogger(logger)
+            .WithCancellationToken(CancellationToken.None)
+            .WithActionDescription("HealthyAction")
+            .WithCircuitKey("cancellation-test-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithAction(_ => Task.FromResult("healthy-success"));
+
+        var healthyResult = await healthyStrategy.ExecuteAsync<string>();
+
+        healthyResult.ShouldBe("healthy-success");
     }
 
     private CircuitBreakerStrategy<TestService> CreateStrategy()

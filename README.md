@@ -785,6 +785,7 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 
 #### Exception Handling & Rethrow Semantics:
 - **Default Handled Exceptions**: If no `WithHandledException` is configured, **all exceptions are handled by default** (`HandledExceptions.Count == 0`).
+- **Caller Cancellation Excluded**: If the operation throws `OperationCanceledException` and cancellation was requested by the caller's cancellation token, this is **not treated as a circuit failure** and will not trip the circuit breaker.
 - **Handled Exceptions Rethrown Without Fallback**: If an execution encounters a handled exception and **no fallback is configured** (`WithFallback` is omitted), the failure is recorded by Polly to update circuit statistics, logged as a warning, and the exception is **rethrown (`throw;`) directly to the caller**.
 - **Fallback Invocation**: When a fallback is provided, handled exceptions and open circuit rejections will invoke the fallback delegate and return its result rather than throwing.
 - **Circuit Breaker Open Exception**: When the circuit is `Open` and no fallback is configured, attempting execution throws a `CircuitBreakerOpenException`.

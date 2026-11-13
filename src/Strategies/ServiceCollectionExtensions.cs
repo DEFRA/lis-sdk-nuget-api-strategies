@@ -9,10 +9,12 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Client;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Client;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker.Policies;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Polly.Registry;
@@ -25,6 +27,7 @@ public static class ServiceCollectionExtensions
         {
             services.AddStrategyOperatorContext();
             services.AddStrategyValidators();
+            services.AddCircuitBreakerPolicyFactory();
 
             return services;
         }
@@ -39,6 +42,13 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddStrategyValidators()
         {
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+            return services;
+        }
+
+        public IServiceCollection AddCircuitBreakerPolicyFactory()
+        {
+            services.AddTransient<ICircuitBreakerPolicyFactory, CircuitBreakerPolicyFactory>();
 
             return services;
         }

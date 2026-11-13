@@ -5,8 +5,10 @@
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations;
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
@@ -33,9 +35,11 @@ public class CircuitBreakerStrategyFactoryTests
     {
         // Arrange
         var factory = new CircuitBreakerStrategyFactory<TestService>(serviceProvider);
+        var policy = Substitute.For<ICircuitBreakerPolicy>();
 
         // Act & Assert
         factory.WithDefaultCircuitKey("test-key").ShouldBe(factory);
+        factory.WithDefaultPolicy(policy).ShouldBe(factory);
         factory.WithDefaultConsecutiveFailureThreshold(3).ShouldBe(factory);
         factory.WithDefaultFailureRatio(0.4).ShouldBe(factory);
         factory.WithDefaultSamplingDuration(10000).ShouldBe(factory);
@@ -62,6 +66,7 @@ public class CircuitBreakerStrategyFactoryTests
 
         // Act & Assert
         Should.Throw<ArgumentException>(() => factory.WithDefaultCircuitKey(string.Empty));
+        Should.Throw<ArgumentNullException>(() => factory.WithDefaultPolicy(null!));
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultConsecutiveFailureThreshold(0));
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultFailureRatio(0));
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultFailureRatio(1.1));
@@ -88,6 +93,7 @@ public class CircuitBreakerStrategyFactoryTests
         var onBreakCalled = false;
         var onResetCalled = false;
         var onHalfOpenCalled = false;
+        var policy = Substitute.For<ICircuitBreakerPolicy>();
 
         var factory = new CircuitBreakerStrategyFactory<TestService>(serviceProvider);
 
@@ -95,6 +101,7 @@ public class CircuitBreakerStrategyFactoryTests
             .WithDefaultLogger(logger)
             .WithDefaultOperatorContext(operatorContext)
             .WithDefaultCircuitKey("my-shared-circuit")
+            .WithDefaultPolicy(policy)
             .WithDefaultConsecutiveFailureThreshold(4)
             .WithDefaultFailureRatio(0.3)
             .WithDefaultSamplingDuration(20000)
@@ -120,6 +127,15 @@ public class CircuitBreakerStrategyFactoryTests
             .GetProperty("DefaultOnBreakAction", flags)?.GetValue(factory);
 
         defaultOnBreak.ShouldNotBeNull();
+
+        var defaultPolicies = (List<ICircuitBreakerPolicy>?)typeof(CircuitBreakerStrategyFactory<TestService>)
+            .GetProperty("DefaultPolicies", flags)?.GetValue(factory);
+
+        defaultPolicies.ShouldNotBeNull();
+        defaultPolicies.Count.ShouldBe(1);
+        defaultPolicies[0].ShouldBe(policy);
+
+        policy.Received(1).Execute(cbStrategy);
 
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("Logger", flags)?.GetValue(cbStrategy).ShouldBe(logger);
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("CircuitKey", flags)?.GetValue(cbStrategy)

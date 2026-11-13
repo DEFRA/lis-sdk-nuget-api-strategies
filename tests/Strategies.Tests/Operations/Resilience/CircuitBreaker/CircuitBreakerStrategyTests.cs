@@ -4,7 +4,6 @@
 
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable NotResolvedInText
-
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Resilience.CircuitBreaker;
 
 using System;
@@ -16,6 +15,7 @@ using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker;
@@ -56,6 +56,41 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
+    public void WithPolicy_ExecutesPolicyAndReturnsSelf()
+    {
+        // Arrange
+        var strategy = CreateStrategy();
+        var policy = Substitute.For<ICircuitBreakerPolicy>();
+
+        // Act
+        var result = strategy.WithPolicy(policy);
+
+        // Assert
+        result.ShouldBe(strategy);
+        policy.Received(1).Execute(strategy);
+    }
+
+    [Fact]
+    public void WithPolicy_WhenCustomPolicyModifiesStrategy_AppliesModifications()
+    {
+        // Arrange
+        var strategy = CreateStrategy();
+        var policy = Substitute.For<ICircuitBreakerPolicy>();
+        policy.When(p => p.Execute(strategy)).Do(_ =>
+        {
+            strategy.WithConsecutiveFailureThreshold(7);
+        });
+
+        // Act
+        strategy.WithPolicy(policy);
+
+        // Assert
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("ConsecutiveFailureThreshold", flags)?.GetValue(strategy)
+            .ShouldBe(7);
+    }
+
+    [Fact]
     public void FluentSetters_WithInvalidArguments_ShouldThrow()
     {
         // Arrange
@@ -63,6 +98,7 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         Should.Throw<ArgumentException>(() => strategy.WithCircuitKey(string.Empty));
+        Should.Throw<ArgumentNullException>(() => strategy.WithPolicy(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithAction(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithAction<string>(null!));
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithConsecutiveFailureThreshold(0));

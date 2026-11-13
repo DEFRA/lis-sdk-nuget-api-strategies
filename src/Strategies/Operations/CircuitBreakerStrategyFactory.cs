@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,11 +28,9 @@ public sealed class CircuitBreakerStrategyFactory<TService>
 
     private IServiceProvider ServiceProvider { get; }
 
-    private List<Func<Exception, CancellationToken, bool>> DefaultHandledExceptions { get; } = [];
-
-    private List<Func<Exception, CancellationToken, bool>> DefaultExcludedExceptions { get; } = [];
-
     private string? DefaultCircuitKey { get; set; }
+
+    private List<ICircuitBreakerPolicy> DefaultPolicies { get; } = [];
 
     private int? DefaultConsecutiveFailureThreshold { get; set; }
 
@@ -42,6 +41,10 @@ public sealed class CircuitBreakerStrategyFactory<TService>
     private int? DefaultMinimumThroughput { get; set; }
 
     private int? DefaultDurationOfBreakMs { get; set; }
+
+    private List<Func<Exception, CancellationToken, bool>> DefaultHandledExceptions { get; } = [];
+
+    private List<Func<Exception, CancellationToken, bool>> DefaultExcludedExceptions { get; } = [];
 
     private Action<Exception, TimeSpan>? DefaultOnBreakAction { get; set; }
 
@@ -54,6 +57,15 @@ public sealed class CircuitBreakerStrategyFactory<TService>
         ArgumentException.ThrowIfNullOrWhiteSpace(circuitKey);
 
         DefaultCircuitKey = circuitKey;
+
+        return GetParentFactory();
+    }
+
+    public ICircuitBreakerStrategyFactory<TService> WithDefaultPolicy(ICircuitBreakerPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+
+        DefaultPolicies.Add(policy);
 
         return GetParentFactory();
     }
@@ -203,6 +215,11 @@ public sealed class CircuitBreakerStrategyFactory<TService>
         if (DefaultCircuitKey != null)
         {
             strategyBuilder.WithCircuitKey(DefaultCircuitKey);
+        }
+
+        foreach (var policy in DefaultPolicies)
+        {
+            strategyBuilder.WithPolicy(policy);
         }
 
         if (DefaultConsecutiveFailureThreshold.HasValue)

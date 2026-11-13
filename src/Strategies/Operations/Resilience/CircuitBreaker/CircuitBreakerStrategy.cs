@@ -13,6 +13,7 @@ using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker.Constants;
@@ -81,6 +82,15 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
         CircuitKey = circuitKey;
         TargetDescription = $"circuit-breaker-{circuitKey}";
+
+        return this;
+    }
+
+    public ICircuitBreakerStrategy<TService> WithPolicy(ICircuitBreakerPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+
+        policy.Execute(this);
 
         return this;
     }

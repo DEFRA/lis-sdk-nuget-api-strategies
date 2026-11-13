@@ -693,6 +693,24 @@ await _restFactory.BuildRestStrategy()
     .ExecuteWithoutResponse();
 ```
 
+### HTTP Client Exception Extensions (`HttpClientExceptionExtensions`)
+
+Extension methods extending `HttpClientException` (and derived types `RestRequestException` and `SoapRequestException`):
+- `StatusCode()` - Extracts the `HttpStatusCode?` from the inner `HttpRequestException`.
+- `IsNotFound()` - Returns `true` if HTTP status is `404 Not Found`.
+- `IsBadRequest()` - Returns `true` if HTTP status is `400 Bad Request`.
+- `IsUnprocessableEntity()` - Returns `true` if HTTP status is `422 Unprocessable Entity`.
+- `IsConflict()` - Returns `true` if HTTP status is `409 Conflict`.
+- `IsServiceUnavailable()` - Returns `true` if HTTP status is `503 Service Unavailable`.
+- `IsGatewayTimeout()` - Returns `true` if HTTP status is `504 Gateway Timeout`.
+- `IsUnauthorized()` - Returns `true` if HTTP status is `401 Unauthorized`.
+- `IsForbidden()` - Returns `true` if HTTP status is `403 Forbidden`.
+- `IsTooManyRequests()` - Returns `true` if HTTP status is `429 Too Many Requests`.
+- `IsInternalServerError()` - Returns `true` if HTTP status is `500 Internal Server Error`.
+- `Is400RangeError()` - Returns `true` if HTTP status code is in the 4xx client error range (`400`–`499`).
+- `Is500RangeError()` - Returns `true` if HTTP status code is in the 5xx server error range (`500`–`599`).
+- `IsNetworkError()` - Returns `true` if the inner exception is an `HttpRequestException` with null or `0` status code (indicating a network or transport failure).
+
 ---
 
 ## 4. Circuit Breaker Strategy (`ICircuitBreakerStrategyFactory<TService>`)
@@ -746,8 +764,10 @@ The factory exposes the following methods to establish default options inherited
 - `WithDefaultDurationOfBreak(int durationOfBreakMs)` - Sets default duration in milliseconds the circuit remains open.
 - `WithDefaultHandledException<TException>()` - Registers a default exception type treated as failure.
 - `WithDefaultHandledException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate treated as failure.
+- `WithDefaultHandledException(Func<Exception, CancellationToken, bool> predicate)` - Registers a default custom exception predicate evaluated with the active cancellation token treated as failure.
 - `WithDefaultExcludedException<TException>()` - Registers a default exception type explicitly excluded from contributing to circuit failures.
 - `WithDefaultExcludedException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate explicitly excluded from contributing to circuit failures.
+- `WithDefaultExcludedException(Func<Exception, CancellationToken, bool> predicate)` - Registers a default custom exception predicate evaluated with the active cancellation token explicitly excluded from contributing to circuit failures.
 - `WithDefaultOnBreak(Action<Exception, TimeSpan> onBreakAction)` - Sets default callback when circuit opens.
 - `WithDefaultOnReset(Action onResetAction)` - Sets default callback when circuit resets to closed.
 - `WithDefaultOnHalfOpen(Action onHalfOpenAction)` - Sets default callback when circuit enters half-open state.
@@ -777,8 +797,10 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 - `WithDurationOfBreak(int durationOfBreakMs)` - Sets break duration in milliseconds (min `1`).
 - `WithHandledException<TException>()` - Specifies an exception type contributing to circuit failures.
 - `WithHandledException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions contributing to failures.
+- `WithHandledException(Func<Exception, CancellationToken, bool> predicate)` - Specifies a predicate evaluated with the active cancellation token for exceptions contributing to failures.
 - `WithExcludedException<TException>()` - Specifies an exception type explicitly excluded from contributing to circuit failures.
 - `WithExcludedException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions explicitly excluded from contributing to failures.
+- `WithExcludedException(Func<Exception, CancellationToken, bool> predicate)` - Specifies a predicate evaluated with the active cancellation token for exceptions explicitly excluded from contributing to failures.
 - `WithHandledResult<TResult>(Func<TResult, bool> predicate)` - Specifies a predicate treating returned result models as failures.
 
 #### Protected Actions & Fallbacks:

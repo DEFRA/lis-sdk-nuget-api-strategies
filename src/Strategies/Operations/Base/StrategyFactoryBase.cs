@@ -21,12 +21,14 @@ public abstract class StrategyFactoryBase<TService, TParent> : IStrategyFactory<
     public TParent WithDefaultLogger(ILogger<TService> logger)
     {
         DefaultLogger = logger;
+
         return GetParentFactory();
     }
 
     public TParent WithDefaultOperatorContext(IOperatorContext operatorContext)
     {
         DefaultOperatorContext = operatorContext;
+
         return GetParentFactory();
     }
 

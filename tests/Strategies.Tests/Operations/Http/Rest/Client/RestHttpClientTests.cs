@@ -5,6 +5,7 @@
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Http.Rest.Client;
 
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Rest.Client;

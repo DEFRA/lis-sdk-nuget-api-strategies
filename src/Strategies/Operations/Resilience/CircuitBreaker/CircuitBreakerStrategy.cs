@@ -38,17 +38,17 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     private ResiliencePipelineRegistry<string> PipelineRegistry { get; set; }
 
-    private List<Func<Exception, bool>> HandledExceptions { get; } = [];
+    private List<Func<Exception, CancellationToken, bool>> HandledExceptions { get; } = [];
 
-    private List<Func<Exception, bool>> ExcludedExceptions { get; } =
+    private List<Func<Exception, CancellationToken, bool>> ExcludedExceptions { get; } =
     [
-        ex => ex is StrategyPreConditionException,
-        ex => ex is ArgumentException,
-        ex => ex is ArgumentNullException,
-        ex => ex is ArgumentOutOfRangeException,
-        ex => ex is InvalidOperationException,
-        ex => ex is UnauthorizedAccessException,
-        ex => ex is XmlSchemaValidationException,
+        (ex, _) => ex is StrategyPreConditionException,
+        (ex, _) => ex is ArgumentException,
+        (ex, _) => ex is ArgumentNullException,
+        (ex, _) => ex is ArgumentOutOfRangeException,
+        (ex, _) => ex is InvalidOperationException,
+        (ex, _) => ex is UnauthorizedAccessException,
+        (ex, _) => ex is XmlSchemaValidationException,
     ];
 
     private List<Delegate> HandledResultPredicates { get; } = [];
@@ -156,12 +156,21 @@ public sealed partial class CircuitBreakerStrategy<TService>
     public ICircuitBreakerStrategy<TService> WithHandledException<TException>()
         where TException : Exception
     {
-        HandledExceptions.Add(ex => ex is TException);
+        HandledExceptions.Add((ex, _) => ex is TException);
 
         return this;
     }
 
     public ICircuitBreakerStrategy<TService> WithHandledException(Func<Exception, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        HandledExceptions.Add((ex, _) => predicate(ex));
+
+        return this;
+    }
+
+    public ICircuitBreakerStrategy<TService> WithHandledException(Func<Exception, CancellationToken, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);
 
@@ -173,12 +182,21 @@ public sealed partial class CircuitBreakerStrategy<TService>
     public ICircuitBreakerStrategy<TService> WithExcludedException<TException>()
         where TException : Exception
     {
-        ExcludedExceptions.Add(ex => ex is TException);
+        ExcludedExceptions.Add((ex, _) => ex is TException);
 
         return this;
     }
 
     public ICircuitBreakerStrategy<TService> WithExcludedException(Func<Exception, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        ExcludedExceptions.Add((ex, _) => predicate(ex));
+
+        return this;
+    }
+
+    public ICircuitBreakerStrategy<TService> WithExcludedException(Func<Exception, CancellationToken, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);
 
@@ -507,16 +525,18 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     private bool IsHandledException(Exception ex)
     {
-        if (ex is OperationCanceledException && CancellationToken?.IsCancellationRequested == true)
+        var cancellationToken = CancellationToken ?? System.Threading.CancellationToken.None;
+
+        if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested)
         {
             return false;
         }
 
-        if (ExcludedExceptions.Any(predicate => predicate(ex)))
+        if (ExcludedExceptions.Any(predicate => predicate(ex, cancellationToken)))
         {
             return false;
         }
 
-        return HandledExceptions.Count == 0 || HandledExceptions.Any(predicate => predicate(ex));
+        return HandledExceptions.Count == 0 || HandledExceptions.Any(predicate => predicate(ex, cancellationToken));
     }
 }

@@ -4,6 +4,7 @@
 
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable NotResolvedInText
+
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Resilience.CircuitBreaker;
 
 using System;
@@ -70,8 +71,16 @@ public class CircuitBreakerStrategyTests
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithSamplingDuration(0));
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithMinimumThroughput(0));
         Should.Throw<ArgumentOutOfRangeException>(() => strategy.WithDurationOfBreak(0));
-        Should.Throw<ArgumentNullException>(() => strategy.WithHandledException(null!));
-        Should.Throw<ArgumentNullException>(() => strategy.WithExcludedException(null!));
+        Should.Throw<ArgumentNullException>(() => { strategy.WithHandledException((Func<Exception, bool>)null!); });
+        Should.Throw<ArgumentNullException>(() =>
+        {
+            strategy.WithHandledException((Func<Exception, CancellationToken, bool>)null!);
+        });
+        Should.Throw<ArgumentNullException>(() => { strategy.WithExcludedException((Func<Exception, bool>)null!); });
+        Should.Throw<ArgumentNullException>(() =>
+        {
+            strategy.WithExcludedException((Func<Exception, CancellationToken, bool>)null!);
+        });
         Should.Throw<ArgumentNullException>(() => strategy.WithHandledResult<int>(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithFallback(null!));
         Should.Throw<ArgumentNullException>(() => strategy.WithFallback<string>(null!));
@@ -795,6 +804,67 @@ public class CircuitBreakerStrategyTests
         // Act & Assert
         // Excluded exception should bypass fallback and not trip circuit despite WithHandledException<Exception>()
         await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
+
+        onBreakCalled.ShouldBeFalse();
+        fallbackCalled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHandledExceptionPredicateWithCancellationToken_Matches_ExecutesFallback()
+    {
+        // Arrange
+        var strategy = CreateStrategy()
+            .WithCircuitKey("predicate-ct-handled-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithHandledException((ex, ct) => ex is HttpRequestException && !ct.IsCancellationRequested)
+            .WithAction<string>(_ => throw new HttpRequestException("handled error"))
+            .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
+
+        // Act
+        var result = await strategy.ExecuteAsync<string>();
+
+        // Assert
+        result.ShouldBe("fallback-executed");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHandledExceptionPredicateWithCancellationToken_DoesNotMatch_RethrowsException()
+    {
+        // Arrange
+        var strategy = CreateStrategy()
+            .WithCircuitKey("predicate-ct-unhandled-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithHandledException((ex, ct) => ex is HttpRequestException && ct.IsCancellationRequested)
+            .WithAction<string>(_ => throw new HttpRequestException("unhandled error"))
+            .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
+
+        // Act & Assert
+        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync<string>);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenExcludedExceptionPredicateWithCancellationToken_Matches_ExclusionWins()
+    {
+        // Arrange
+        var onBreakCalled = false;
+        var fallbackCalled = false;
+
+        var strategy = CreateStrategy()
+            .WithCircuitKey("predicate-ct-excluded-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithHandledException<Exception>()
+            .WithExcludedException((ex, ct) => ex is NotFiniteNumberException && !ct.IsCancellationRequested)
+            .WithFallback<string>(_ =>
+            {
+                fallbackCalled = true;
+                return Task.FromResult("fallback");
+            })
+            .OnBreak((_, _) => onBreakCalled = true)
+            .WithAction<string>(_ => throw new NotFiniteNumberException("not finite"));
+
+        // Act & Assert
         await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
         await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
 

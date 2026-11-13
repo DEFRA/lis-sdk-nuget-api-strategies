@@ -43,8 +43,12 @@ public class CircuitBreakerStrategyFactoryTests
         factory.WithDefaultDurationOfBreak(15000).ShouldBe(factory);
         factory.WithDefaultHandledException<HttpRequestException>().ShouldBe(factory);
         factory.WithDefaultHandledException(ex => ex is TimeoutException).ShouldBe(factory);
+        factory.WithDefaultHandledException((ex, ct) => ex is TimeoutException && !ct.IsCancellationRequested)
+            .ShouldBe(factory);
         factory.WithDefaultExcludedException<ArgumentException>().ShouldBe(factory);
         factory.WithDefaultExcludedException(ex => ex is InvalidOperationException).ShouldBe(factory);
+        factory.WithDefaultExcludedException((ex, ct) =>
+            ex is InvalidOperationException && !ct.IsCancellationRequested).ShouldBe(factory);
         factory.WithDefaultOnBreak((_, _) => { }).ShouldBe(factory);
         factory.WithDefaultOnReset(() => { }).ShouldBe(factory);
         factory.WithDefaultOnHalfOpen(() => { }).ShouldBe(factory);
@@ -64,8 +68,14 @@ public class CircuitBreakerStrategyFactoryTests
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultSamplingDuration(0));
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultMinimumThroughput(0));
         Should.Throw<ArgumentOutOfRangeException>(() => factory.WithDefaultDurationOfBreak(0));
-        Should.Throw<ArgumentNullException>(() => factory.WithDefaultHandledException(null!));
-        Should.Throw<ArgumentNullException>(() => factory.WithDefaultExcludedException(null!));
+        Should.Throw<ArgumentNullException>(() =>
+            factory.WithDefaultHandledException((Func<Exception, bool>)null!));
+        Should.Throw<ArgumentNullException>(() =>
+            factory.WithDefaultHandledException((Func<Exception, CancellationToken, bool>)null!));
+        Should.Throw<ArgumentNullException>(() =>
+            factory.WithDefaultExcludedException((Func<Exception, bool>)null!));
+        Should.Throw<ArgumentNullException>(() =>
+            factory.WithDefaultExcludedException((Func<Exception, CancellationToken, bool>)null!));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultOnBreak(null!));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultOnReset(null!));
         Should.Throw<ArgumentNullException>(() => factory.WithDefaultOnHalfOpen(null!));
@@ -156,5 +166,48 @@ public class CircuitBreakerStrategyFactoryTests
         onHalfOpenAction?.Invoke();
 
         onHalfOpenCalled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void BuildCircuitBreakerStrategy_ShouldAttachCancellationTokenAwareExceptionDefaults()
+    {
+        // Arrange
+        var factory = new CircuitBreakerStrategyFactory<TestService>(serviceProvider);
+
+        factory
+            .WithDefaultCircuitKey("ct-defaults-circuit")
+            .WithDefaultConsecutiveFailureThreshold(2)
+            .WithDefaultHandledException((ex, ct) => ex is TimeoutException && !ct.IsCancellationRequested)
+            .WithDefaultExcludedException((ex, ct) => ex is NotFiniteNumberException && !ct.IsCancellationRequested);
+
+        // Act
+        var strategy = factory.BuildCircuitBreakerStrategy();
+
+        // Assert
+        strategy.ShouldNotBeNull();
+        strategy.ShouldBeOfType<CircuitBreakerStrategy<TestService>>();
+
+        var cbStrategy = (CircuitBreakerStrategy<TestService>)strategy;
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        var handledExceptions =
+            (List<Func<Exception, CancellationToken, bool>>?)typeof(CircuitBreakerStrategy<TestService>)
+                .GetProperty("HandledExceptions", flags)?.GetValue(cbStrategy);
+
+        handledExceptions.ShouldNotBeNull();
+        handledExceptions.Count.ShouldBe(1);
+        handledExceptions[0](new TimeoutException(), CancellationToken.None).ShouldBeTrue();
+        handledExceptions[0](new TimeoutException(), new CancellationToken(true)).ShouldBeFalse();
+
+        var excludedExceptions =
+            (List<Func<Exception, CancellationToken, bool>>?)typeof(CircuitBreakerStrategy<TestService>)
+                .GetProperty("ExcludedExceptions", flags)?.GetValue(cbStrategy);
+
+        excludedExceptions.ShouldNotBeNull();
+
+        // default 7 exclusions + 1 custom
+        excludedExceptions.Count.ShouldBe(8);
+        excludedExceptions[7](new NotFiniteNumberException(), CancellationToken.None).ShouldBeTrue();
+        excludedExceptions[7](new NotFiniteNumberException(), new CancellationToken(true)).ShouldBeFalse();
     }
 }

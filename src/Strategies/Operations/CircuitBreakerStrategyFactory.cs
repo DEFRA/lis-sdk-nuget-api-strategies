@@ -27,9 +27,9 @@ public sealed class CircuitBreakerStrategyFactory<TService>
 
     private IServiceProvider ServiceProvider { get; }
 
-    private List<Func<Exception, bool>> DefaultHandledExceptions { get; } = [];
+    private List<Func<Exception, CancellationToken, bool>> DefaultHandledExceptions { get; } = [];
 
-    private List<Func<Exception, bool>> DefaultExcludedExceptions { get; } = [];
+    private List<Func<Exception, CancellationToken, bool>> DefaultExcludedExceptions { get; } = [];
 
     private string? DefaultCircuitKey { get; set; }
 
@@ -108,12 +108,22 @@ public sealed class CircuitBreakerStrategyFactory<TService>
     public ICircuitBreakerStrategyFactory<TService> WithDefaultHandledException<TException>()
         where TException : Exception
     {
-        DefaultHandledExceptions.Add(ex => ex is TException);
+        DefaultHandledExceptions.Add((ex, _) => ex is TException);
 
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultHandledException(Func<Exception, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        DefaultHandledExceptions.Add((ex, _) => predicate(ex));
+
+        return GetParentFactory();
+    }
+
+    public ICircuitBreakerStrategyFactory<TService> WithDefaultHandledException(
+        Func<Exception, CancellationToken, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);
 
@@ -125,12 +135,22 @@ public sealed class CircuitBreakerStrategyFactory<TService>
     public ICircuitBreakerStrategyFactory<TService> WithDefaultExcludedException<TException>()
         where TException : Exception
     {
-        DefaultExcludedExceptions.Add(ex => ex is TException);
+        DefaultExcludedExceptions.Add((ex, _) => ex is TException);
 
         return GetParentFactory();
     }
 
     public ICircuitBreakerStrategyFactory<TService> WithDefaultExcludedException(Func<Exception, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        DefaultExcludedExceptions.Add((ex, _) => predicate(ex));
+
+        return GetParentFactory();
+    }
+
+    public ICircuitBreakerStrategyFactory<TService> WithDefaultExcludedException(
+        Func<Exception, CancellationToken, bool> predicate)
     {
         ArgumentNullException.ThrowIfNull(predicate);
 

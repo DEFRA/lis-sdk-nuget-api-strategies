@@ -274,12 +274,12 @@ public sealed partial class CircuitBreakerStrategy<TService>
         return this;
     }
 
-    public async Task ExecuteAsync()
+    public async Task Execute()
     {
-        await ExecuteAsync<object?>();
+        await Execute<object?>();
     }
 
-    public async Task<TResult> ExecuteAsync<TResult>()
+    public async Task<TResult> Execute<TResult>()
     {
         ValidateConfiguration();
 

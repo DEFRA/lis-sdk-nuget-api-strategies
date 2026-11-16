@@ -126,7 +126,7 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenLoggerNull_ThrowsInvalidOperationException()
+    public async Task Execute_WhenLoggerNull_ThrowsInvalidOperationException()
     {
         // Arrange
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
@@ -136,14 +136,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
         ex.Message.ShouldBe(StrategyConstants.Errors.LoggerRequired);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenCancellationTokenNull_ThrowsInvalidOperationException()
+    public async Task Execute_WhenCancellationTokenNull_ThrowsInvalidOperationException()
     {
         // Arrange
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
@@ -153,14 +153,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
         ex.Message.ShouldBe(StrategyConstants.Errors.CancellationTokenRequired);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenActionDescriptionNull_ThrowsInvalidOperationException()
+    public async Task Execute_WhenActionDescriptionNull_ThrowsInvalidOperationException()
     {
         // Arrange
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
@@ -171,14 +171,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
         ex.Message.ShouldBe(StrategyConstants.Errors.ActionDescriptionRequired);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenCircuitKeyNull_ThrowsInvalidOperationException()
+    public async Task Execute_WhenCircuitKeyNull_ThrowsInvalidOperationException()
     {
         // Arrange
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
@@ -189,14 +189,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
         ex.Message.ShouldBe(CircuitBreakerStrategyConstants.Errors.CircuitKeyRequired);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenNoActionConfigured_ShouldThrowInvalidOperationException()
+    public async Task Execute_WhenNoActionConfigured_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -204,14 +204,14 @@ public class CircuitBreakerStrategyTests
             .WithConsecutiveFailureThreshold(3);
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
         ex.Message.ShouldBe("Action to execute has not been configured.");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenNoThresholdConfigured_ShouldThrowInvalidOperationException()
+    public async Task Execute_WhenNoThresholdConfigured_ShouldThrowInvalidOperationException()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -219,14 +219,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
         ex.Message.ShouldBe("Circuit breaker must be configured with at least one threshold.");
     }
 
     [Fact]
-    public async Task ExecuteAsync_VoidAction_SuccessfulExecution()
+    public async Task Execute_VoidAction_SuccessfulExecution()
     {
         // Arrange
         var actionExecuted = false;
@@ -241,14 +241,14 @@ public class CircuitBreakerStrategyTests
             });
 
         // Act
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
 
         // Assert
         actionExecuted.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task ExecuteAsync_GenericAction_SuccessfulExecution()
+    public async Task Execute_GenericAction_SuccessfulExecution()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -257,14 +257,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.FromResult("result-value"));
 
         // Act
-        var result = await strategy.ExecuteAsync<string>();
+        var result = await strategy.Execute<string>();
 
         // Assert
         result.ShouldBe("result-value");
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConsecutiveFailures_OpensCircuitAndThrowsCircuitBreakerOpenException()
+    public async Task Execute_ConsecutiveFailures_OpensCircuitAndThrowsCircuitBreakerOpenException()
     {
         // Arrange
         var onBreakCalled = false;
@@ -279,14 +279,14 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // Call 1: fails
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
             "Circuit breaker operation 'TestAction' encountered handled failure");
 
         // Call 2: fails and trips circuit
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
 
         onBreakCalled.ShouldBeTrue();
 
@@ -295,7 +295,7 @@ public class CircuitBreakerStrategyTests
             "Circuit 'consecutive-fail-key:consecutive' opened for 5s due to error: boom");
 
         // Call 3: circuit is now OPEN
-        var ex = await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.ExecuteAsync);
+        var ex = await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.Execute);
 
         ex.Message.ShouldContain("is OPEN");
 
@@ -305,7 +305,7 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenCircuitOpen_ExecutesFallback()
+    public async Task Execute_WhenCircuitOpen_ExecutesFallback()
     {
         // Arrange
         var fallbackCount = 0;
@@ -324,11 +324,11 @@ public class CircuitBreakerStrategyTests
 
         // Act
         // Calls 1 and 2 fail and trip the circuit
-        var result1 = await strategy.ExecuteAsync<string>();
-        var result2 = await strategy.ExecuteAsync<string>();
+        var result1 = await strategy.Execute<string>();
+        var result2 = await strategy.Execute<string>();
 
         // Call 3: circuit is OPEN (Polly throws BrokenCircuitException on execution), executes fallback
-        var result3 = await strategy.ExecuteAsync<string>();
+        var result3 = await strategy.Execute<string>();
 
         // Assert
         result1.ShouldBe("fallback-data");
@@ -354,7 +354,7 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_VoidAction_WhenCircuitOpen_ExecutesFallback()
+    public async Task Execute_VoidAction_WhenCircuitOpen_ExecutesFallback()
     {
         // Arrange
         var fallbackCalled = false;
@@ -372,14 +372,14 @@ public class CircuitBreakerStrategyTests
             });
 
         // Act
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenUnhandledExceptionThrown_DoesNotExecuteFallbackAndRethrows()
+    public async Task Execute_WhenUnhandledExceptionThrown_DoesNotExecuteFallbackAndRethrows()
     {
         // Arrange
         var fallbackCalled = false;
@@ -396,13 +396,13 @@ public class CircuitBreakerStrategyTests
             });
 
         // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<string>);
 
         fallbackCalled.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenHandledResultPredicateMatches_TriggersCircuitFailure()
+    public async Task Execute_WhenHandledResultPredicateMatches_TriggersCircuitFailure()
     {
         // Arrange
         var onBreakCalled = false;
@@ -416,8 +416,8 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.FromResult(500));
 
         // Act
-        var res1 = await strategy.ExecuteAsync<int>();
-        var res2 = await strategy.ExecuteAsync<int>();
+        var res1 = await strategy.Execute<int>();
+        var res2 = await strategy.Execute<int>();
 
         // Assert
         res1.ShouldBe(500);
@@ -432,11 +432,11 @@ public class CircuitBreakerStrategyTests
             .WithDurationOfBreak(5000)
             .WithAction(_ => Task.FromResult(200));
 
-        await Should.ThrowAsync<CircuitBreakerOpenException>(strategy2.ExecuteAsync<int>);
+        await Should.ThrowAsync<CircuitBreakerOpenException>(strategy2.Execute<int>);
     }
 
     [Fact]
-    public async Task ExecuteAsync_RatioBased_OpensCircuitWhenRatioExceeded()
+    public async Task Execute_RatioBased_OpensCircuitWhenRatioExceeded()
     {
         // Arrange
         var onBreakCalled = false;
@@ -452,8 +452,8 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => throw new HttpRequestException("failed"));
 
         // Act & Assert
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync);
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
 
         onBreakCalled.ShouldBeTrue();
 
@@ -461,11 +461,11 @@ public class CircuitBreakerStrategyTests
             LogLevel.Warning,
             "Circuit 'ratio-circuit-key:ratio' opened for 5s due to error: failed");
 
-        await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.Execute);
     }
 
     [Fact]
-    public async Task ExecuteAsync_LifecycleHooksAndValidation_ShouldBeExecuted()
+    public async Task Execute_LifecycleHooksAndValidation_ShouldBeExecuted()
     {
         // Arrange
         var beforeCalled = false;
@@ -493,7 +493,7 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.FromResult(42));
 
         // Act
-        var result = await strategy.ExecuteAsync<int>();
+        var result = await strategy.Execute<int>();
 
         // Assert
         result.ShouldBe(42);
@@ -503,7 +503,7 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_RequiresAuthenticatedOperator_WhenNotAuthenticated_Throws()
+    public async Task Execute_RequiresAuthenticatedOperator_WhenNotAuthenticated_Throws()
     {
         // Arrange
         var operatorContext = Substitute.For<IOperatorContext>();
@@ -518,11 +518,11 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.CompletedTask);
 
         // Act & Assert
-        await Should.ThrowAsync<UnauthorizedAccessException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<UnauthorizedAccessException>(strategy.Execute);
     }
 
     [Fact]
-    public async Task ExecuteAsync_CircuitRecovery_TriggersOnHalfOpenAndOnResetAndLogs()
+    public async Task Execute_CircuitRecovery_TriggersOnHalfOpenAndOnResetAndLogs()
     {
         // Arrange
         var onHalfOpenCalled = false;
@@ -542,8 +542,8 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // Calls 1 and 2: fail and trip circuit
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync<string>);
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute<string>);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute<string>);
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
@@ -555,7 +555,7 @@ public class CircuitBreakerStrategyTests
         // Call 3: probe succeeds -> transitions from Half-Open to Closed
         fail = false;
 
-        var result = await strategy.ExecuteAsync<string>();
+        var result = await strategy.Execute<string>();
 
         result.ShouldBe("recovered");
 
@@ -570,7 +570,7 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithHandledExceptionPredicate_HandlesMatchingAndIgnoresNonMatching()
+    public async Task Execute_WithHandledExceptionPredicate_HandlesMatchingAndIgnoresNonMatching()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -583,7 +583,7 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // When exception does not match predicate, fallback should not be executed and exception is rethrown
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute<string>);
 
         // Arrange matching strategy
         var matchingStrategy = CreateStrategy()
@@ -595,30 +595,30 @@ public class CircuitBreakerStrategyTests
             .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
 
         // Act
-        var result = await matchingStrategy.ExecuteAsync<string>();
+        var result = await matchingStrategy.Execute<string>();
 
         // Assert
         result.ShouldBe("fallback-executed");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenActionTypeMismatch_ThrowsInvalidOperationException()
+    public async Task Execute_WhenActionTypeMismatch_ThrowsInvalidOperationException()
     {
         // Arrange
-        // Configured as void action (Task), but executed with generic ExecuteAsync<int>()
+        // Configured as void action (Task), but executed with generic Execute<int>()
         // In this case, void action returns null, casting null to int throws or configuredAction is Func<CancellationToken, Task<object?>>
-        // Let's test configuredAction is Func<CancellationToken, Task<string>> but ExecuteAsync<int>() is called
+        // Let's test configuredAction is Func<CancellationToken, Task<string>> but Execute<int>() is called
         var strategy = CreateStrategy()
             .WithCircuitKey("mismatch-key")
             .WithConsecutiveFailureThreshold(2)
             .WithAction(_ => Task.FromResult("string-result"));
 
         // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync<int>);
+        await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<int>);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenFallbackTypeMismatch_ThrowsInvalidOperationException()
+    public async Task Execute_WhenFallbackTypeMismatch_ThrowsInvalidOperationException()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -629,11 +629,11 @@ public class CircuitBreakerStrategyTests
             .WithFallback<string>(_ => Task.FromResult("string-fallback"));
 
         // Act & Assert
-        await Should.ThrowAsync<InvalidOperationException>(strategy.ExecuteAsync<int>);
+        await Should.ThrowAsync<InvalidOperationException>(strategy.Execute<int>);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithDefaultTimingOptions_ExecutesSuccessfully()
+    public async Task Execute_WithDefaultTimingOptions_ExecutesSuccessfully()
     {
         // Arrange
         // When durationOfBreakMs, samplingDurationMs, and minimumThroughput are not explicitly set
@@ -643,14 +643,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.FromResult("ok"));
 
         // Act
-        var result = await strategy.ExecuteAsync<string>();
+        var result = await strategy.Execute<string>();
 
         // Assert
         result.ShouldBe("ok");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenConsecutiveThresholdIsOne_ConfiguresMinimumThroughputCorrectly()
+    public async Task Execute_WhenConsecutiveThresholdIsOne_ConfiguresMinimumThroughputCorrectly()
     {
         // Arrange
         var onBreakCalled = false;
@@ -665,16 +665,16 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // Call 1
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
 
         // Call 2: with minThroughput=2, ratio=0.5, 2 failures out of 2 requests trips the circuit
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
 
         onBreakCalled.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithHandledResultNonMatching_ReturnsResultWithoutBreaking()
+    public async Task Execute_WithHandledResultNonMatching_ReturnsResultWithoutBreaking()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -684,14 +684,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.FromResult(200));
 
         // Act
-        var result = await strategy.ExecuteAsync<int>();
+        var result = await strategy.Execute<int>();
 
         // Assert
         result.ShouldBe(200);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithExplicitCircuitKey_ExecutesSuccessfully()
+    public async Task Execute_WithExplicitCircuitKey_ExecutesSuccessfully()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -700,14 +700,14 @@ public class CircuitBreakerStrategyTests
             .WithAction(_ => Task.FromResult("explicit-key-result"));
 
         // Act
-        var result = await strategy.ExecuteAsync<string>();
+        var result = await strategy.Execute<string>();
 
         // Assert
         result.ShouldBe("explicit-key-result");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenCallerCancelsToken_DoesNotTripCircuit()
+    public async Task Execute_WhenCallerCancelsToken_DoesNotTripCircuit()
     {
         // Arrange
         var onBreakCalled = false;
@@ -730,9 +730,9 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // Consecutive calls with caller cancellation should throw OperationCanceledException but NOT trip the circuit
-        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
-        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
-        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.Execute);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.Execute);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.Execute);
 
         onBreakCalled.ShouldBeFalse();
 
@@ -745,13 +745,13 @@ public class CircuitBreakerStrategyTests
             .WithConsecutiveFailureThreshold(2)
             .WithAction(_ => Task.FromResult("healthy-success"));
 
-        var healthyResult = await healthyStrategy.ExecuteAsync<string>();
+        var healthyResult = await healthyStrategy.Execute<string>();
 
         healthyResult.ShouldBe("healthy-success");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenExcludedExceptionTypeThrown_DoesNotTripCircuitAndDoesNotExecuteFallback()
+    public async Task Execute_WhenExcludedExceptionTypeThrown_DoesNotTripCircuitAndDoesNotExecuteFallback()
     {
         // Arrange
         var onBreakCalled = false;
@@ -771,9 +771,9 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // Consecutive calls with excluded exception should throw NotSupportedException directly
-        await Should.ThrowAsync<NotSupportedException>(strategy.ExecuteAsync);
-        await Should.ThrowAsync<NotSupportedException>(strategy.ExecuteAsync);
-        await Should.ThrowAsync<NotSupportedException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<NotSupportedException>(strategy.Execute);
+        await Should.ThrowAsync<NotSupportedException>(strategy.Execute);
+        await Should.ThrowAsync<NotSupportedException>(strategy.Execute);
 
         onBreakCalled.ShouldBeFalse();
         fallbackCalled.ShouldBeFalse();
@@ -784,12 +784,12 @@ public class CircuitBreakerStrategyTests
             .WithConsecutiveFailureThreshold(2)
             .WithAction(_ => Task.FromResult("healthy"));
 
-        var healthyResult = await healthyStrategy.ExecuteAsync<string>();
+        var healthyResult = await healthyStrategy.Execute<string>();
         healthyResult.ShouldBe("healthy");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenExcludedExceptionPredicateMatched_DoesNotTripCircuitAndDoesNotExecuteFallback()
+    public async Task Execute_WhenExcludedExceptionPredicateMatched_DoesNotTripCircuitAndDoesNotExecuteFallback()
     {
         // Arrange
         var onBreakCalled = false;
@@ -809,16 +809,16 @@ public class CircuitBreakerStrategyTests
             .WithAction<string>(_ => throw new TimeoutException("skip-breaker: custom timeout"));
 
         // Act & Assert
-        await Should.ThrowAsync<TimeoutException>(strategy.ExecuteAsync<string>);
-        await Should.ThrowAsync<TimeoutException>(strategy.ExecuteAsync<string>);
-        await Should.ThrowAsync<TimeoutException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<TimeoutException>(strategy.Execute<string>);
+        await Should.ThrowAsync<TimeoutException>(strategy.Execute<string>);
+        await Should.ThrowAsync<TimeoutException>(strategy.Execute<string>);
 
         onBreakCalled.ShouldBeFalse();
         fallbackCalled.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenExcludedExceptionPrecedenceOverHandledException_ExclusionWins()
+    public async Task Execute_WhenExcludedExceptionPrecedenceOverHandledException_ExclusionWins()
     {
         // Arrange
         var onBreakCalled = false;
@@ -839,16 +839,16 @@ public class CircuitBreakerStrategyTests
 
         // Act & Assert
         // Excluded exception should bypass fallback and not trip circuit despite WithHandledException<Exception>()
-        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
-        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
-        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.Execute<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.Execute<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.Execute<string>);
 
         onBreakCalled.ShouldBeFalse();
         fallbackCalled.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenHandledExceptionPredicateWithCancellationToken_Matches_ExecutesFallback()
+    public async Task Execute_WhenHandledExceptionPredicateWithCancellationToken_Matches_ExecutesFallback()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -859,14 +859,14 @@ public class CircuitBreakerStrategyTests
             .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
 
         // Act
-        var result = await strategy.ExecuteAsync<string>();
+        var result = await strategy.Execute<string>();
 
         // Assert
         result.ShouldBe("fallback-executed");
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenHandledExceptionPredicateWithCancellationToken_DoesNotMatch_RethrowsException()
+    public async Task Execute_WhenHandledExceptionPredicateWithCancellationToken_DoesNotMatch_RethrowsException()
     {
         // Arrange
         var strategy = CreateStrategy()
@@ -877,11 +877,11 @@ public class CircuitBreakerStrategyTests
             .WithFallback<string>(_ => Task.FromResult("fallback-executed"));
 
         // Act & Assert
-        await Should.ThrowAsync<HttpRequestException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<HttpRequestException>(strategy.Execute<string>);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenExcludedExceptionPredicateWithCancellationToken_Matches_ExclusionWins()
+    public async Task Execute_WhenExcludedExceptionPredicateWithCancellationToken_Matches_ExclusionWins()
     {
         // Arrange
         var onBreakCalled = false;
@@ -901,15 +901,15 @@ public class CircuitBreakerStrategyTests
             .WithAction<string>(_ => throw new NotFiniteNumberException("not finite"));
 
         // Act & Assert
-        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
-        await Should.ThrowAsync<NotFiniteNumberException>(strategy.ExecuteAsync<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.Execute<string>);
+        await Should.ThrowAsync<NotFiniteNumberException>(strategy.Execute<string>);
 
         onBreakCalled.ShouldBeFalse();
         fallbackCalled.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenDefaultExcludedExceptionThrown_DoesNotTripCircuitAndDoesNotExecuteFallback()
+    public async Task Execute_WhenDefaultExcludedExceptionThrown_DoesNotTripCircuitAndDoesNotExecuteFallback()
     {
         // Arrange
         Exception[] defaultExcludedExceptions =
@@ -950,15 +950,15 @@ public class CircuitBreakerStrategyTests
 
             // Act & Assert
             // Consecutive calls with default excluded exception should throw directly without tripping circuit or executing fallback
-            var thrown1 = await Should.ThrowAsync<Exception>(strategy.ExecuteAsync);
+            var thrown1 = await Should.ThrowAsync<Exception>(strategy.Execute);
 
             thrown1.GetType().ShouldBe(exception.GetType());
 
-            var thrown2 = await Should.ThrowAsync<Exception>(strategy.ExecuteAsync);
+            var thrown2 = await Should.ThrowAsync<Exception>(strategy.Execute);
 
             thrown2.GetType().ShouldBe(exception.GetType());
 
-            var thrown3 = await Should.ThrowAsync<Exception>(strategy.ExecuteAsync);
+            var thrown3 = await Should.ThrowAsync<Exception>(strategy.Execute);
 
             thrown3.GetType().ShouldBe(exception.GetType());
 
@@ -971,7 +971,7 @@ public class CircuitBreakerStrategyTests
                 .WithConsecutiveFailureThreshold(2)
                 .WithAction(_ => Task.FromResult("healthy"));
 
-            var healthyResult = await healthyStrategy.ExecuteAsync<string>();
+            var healthyResult = await healthyStrategy.Execute<string>();
 
             healthyResult.ShouldBe("healthy");
         }

@@ -484,8 +484,8 @@ public class CircuitBreakerHttpPolicyTests
                 new HttpRequestException("500", null, HttpStatusCode.InternalServerError)));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
@@ -517,8 +517,8 @@ public class CircuitBreakerHttpPolicyTests
                 new HttpRequestException("429", null, HttpStatusCode.TooManyRequests)));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
@@ -549,8 +549,8 @@ public class CircuitBreakerHttpPolicyTests
                 throw new RestRequestException("Network Failure", new HttpRequestException("Connection refused")));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
@@ -580,8 +580,8 @@ public class CircuitBreakerHttpPolicyTests
             .WithAction(_ => throw new RestRequestException("Timeout", new TimeoutException("Request timed out")));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
@@ -614,8 +614,8 @@ public class CircuitBreakerHttpPolicyTests
                 new OperationCanceledException("Timeout", new TimeoutException("Inner timeout"))));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
@@ -647,8 +647,8 @@ public class CircuitBreakerHttpPolicyTests
                 throw new RestRequestException("Task canceled", new TaskCanceledException("Internal timeout")));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();
@@ -684,8 +684,8 @@ public class CircuitBreakerHttpPolicyTests
                 throw new RestRequestException("User canceled", new TaskCanceledException("User canceled")));
 
         // Act & Assert
-        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
-        await Should.ThrowAsync<OperationCanceledException>(strategy.ExecuteAsync);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.Execute);
+        await Should.ThrowAsync<OperationCanceledException>(strategy.Execute);
 
         onBreakCalled.ShouldBeFalse();
         fallbackCalled.ShouldBeFalse();
@@ -714,8 +714,8 @@ public class CircuitBreakerHttpPolicyTests
             .WithAction(_ => throw new TimeoutRejectedException("Timeout rejected"));
 
         // Act
-        await strategy.ExecuteAsync();
-        await strategy.ExecuteAsync();
+        await strategy.Execute();
+        await strategy.Execute();
 
         // Assert
         fallbackCalled.ShouldBeTrue();

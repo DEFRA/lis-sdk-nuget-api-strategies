@@ -37,6 +37,22 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
+    public void Constructor_SetsDefaultTimingAndThroughputOptions()
+    {
+        // Arrange
+        var strategy = CreateStrategy();
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        // Assert
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("SamplingDurationMs", flags)?.GetValue(strategy)
+            .ShouldBe(30000);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("DurationOfBreakMs", flags)?.GetValue(strategy)
+            .ShouldBe(30000);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("MinimumThroughput", flags)?.GetValue(strategy)
+            .ShouldBe(2);
+    }
+
+    [Fact]
     public void WithCircuitKey_SetsCircuitKeyAndTargetDescription()
     {
         // Arrange

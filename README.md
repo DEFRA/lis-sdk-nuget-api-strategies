@@ -759,9 +759,9 @@ The factory exposes the following methods to establish default options inherited
 - `WithDefaultCircuitKey(string circuitKey)` - Sets default circuit key identifier.
 - `WithDefaultConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets default consecutive failure count before tripping.
 - `WithDefaultFailureRatio(double failureRatio)` - Sets default failure ratio threshold (`0.001` to `1.0`).
-- `WithDefaultSamplingDuration(int samplingDurationMs)` - Sets default sampling time window in milliseconds.
-- `WithDefaultMinimumThroughput(int minimumThroughput)` - Sets default minimum request count within sampling window.
-- `WithDefaultDurationOfBreak(int durationOfBreakMs)` - Sets default duration in milliseconds the circuit remains open.
+- `WithDefaultSamplingDuration(int samplingDurationMs)` - Sets default sampling time window in milliseconds (strategy defaults to `30,000` ms / 30s if omitted).
+- `WithDefaultMinimumThroughput(int minimumThroughput)` - Sets default minimum request count within sampling window (strategy defaults to `2` if omitted).
+- `WithDefaultDurationOfBreak(int durationOfBreakMs)` - Sets default duration in milliseconds the circuit remains open (strategy defaults to `30,000` ms / 30s if omitted).
 - `WithDefaultHandledException<TException>()` - Registers a default exception type treated as failure.
 - `WithDefaultHandledException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate treated as failure.
 - `WithDefaultHandledException(Func<Exception, CancellationToken, bool> predicate)` - Registers a default custom exception predicate evaluated with the active cancellation token treated as failure.
@@ -792,9 +792,9 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 - `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"`.
 - `WithConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets consecutive failure threshold (min `1`).
 - `WithFailureRatio(double failureRatio)` - Sets failure ratio threshold (min `0.001`, max `1.0`).
-- `WithSamplingDuration(int samplingDurationMs)` - Sets sampling window in milliseconds (min `1`).
-- `WithMinimumThroughput(int minimumThroughput)` - Sets minimum throughput before failure ratio is evaluated (min `1`).
-- `WithDurationOfBreak(int durationOfBreakMs)` - Sets break duration in milliseconds (min `1`).
+- `WithSamplingDuration(int samplingDurationMs)` - Sets sampling window in milliseconds (min `1`, defaults to `30,000` ms / 30s).
+- `WithMinimumThroughput(int minimumThroughput)` - Sets minimum throughput before failure ratio is evaluated (min `1`, defaults to `2`).
+- `WithDurationOfBreak(int durationOfBreakMs)` - Sets break duration in milliseconds (min `1`, defaults to `30,000` ms / 30s).
 - `WithHandledException<TException>()` - Specifies an exception type contributing to circuit failures.
 - `WithHandledException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions contributing to failures.
 - `WithHandledException(Func<Exception, CancellationToken, bool> predicate)` - Specifies a predicate evaluated with the active cancellation token for exceptions contributing to failures.
@@ -838,8 +838,8 @@ The builder allows configuring **both** `WithConsecutiveFailureThreshold` and `W
 - When either breaker opens, calls are blocked and handled according to the fallback or exception rethrow logic.
 
 #### Execution Methods:
-- `ExecuteAsync()` - Executes a void / `Task` action within the circuit breaker.
-- `ExecuteAsync<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
+- `Execute()` - Executes a void / `Task` action within the circuit breaker.
+- `Execute<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
 
 ---
 
@@ -856,7 +856,7 @@ await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
     .WithHandledException<HttpRequestException>()
     .WithAction(async ct => await _apiClient.DeleteAnimalAsync(animalId, ct))
     .WithFallback(async ct => await _deadLetterQueue.EnqueueDeleteAsync(animalId, ct))
-    .ExecuteAsync();
+    .Execute();
 ```
 
 #### 2. Generic `Task<TResult>` Operation with Failure Ratio:
@@ -873,7 +873,7 @@ AnimalDto animal = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
     .WithHandledException<TimeoutException>()
     .WithAction(async ct => await _apiClient.GetAnimalAsync(tagNumber, ct))
     .WithFallback(async ct => await _cacheService.GetAnimalAsync(tagNumber, ct))
-    .ExecuteAsync<AnimalDto>();
+    .Execute<AnimalDto>();
 ```
 
 #### 3. Multi-Breaker (Consecutive + Ratio-Based) without Fallback (Exceptions Rethrown):
@@ -893,7 +893,7 @@ try
         .OnBreak((ex, duration) => _alertService.NotifyCircuitOpened("MovementProcessingApi", ex, duration))
         .OnReset(() => _alertService.NotifyCircuitRecovered("MovementProcessingApi"))
         .WithAction(async ct => await _movementClient.ProcessAsync(movementRequest, ct))
-        .ExecuteAsync<MovementResult>();
+        .Execute<MovementResult>();
 }
 catch (CircuitBreakerOpenException ex)
 {

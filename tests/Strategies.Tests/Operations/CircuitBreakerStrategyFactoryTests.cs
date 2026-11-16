@@ -226,4 +226,28 @@ public class CircuitBreakerStrategyFactoryTests
         excludedExceptions[6](new NotFiniteNumberException(), CancellationToken.None).ShouldBeTrue();
         excludedExceptions[6](new NotFiniteNumberException(), new CancellationToken(true)).ShouldBeFalse();
     }
+
+    [Fact]
+    public void BuildCircuitBreakerStrategy_WithoutTimingOptions_RetainsStrategyDefaults()
+    {
+        // Arrange
+        var factory = new CircuitBreakerStrategyFactory<TestService>(serviceProvider);
+
+        // Act
+        var strategy = factory.BuildCircuitBreakerStrategy();
+
+        // Assert
+        strategy.ShouldNotBeNull();
+        strategy.ShouldBeOfType<CircuitBreakerStrategy<TestService>>();
+
+        var cbStrategy = (CircuitBreakerStrategy<TestService>)strategy;
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("SamplingDurationMs", flags)?.GetValue(cbStrategy)
+            .ShouldBe(30000);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("DurationOfBreakMs", flags)?.GetValue(cbStrategy)
+            .ShouldBe(30000);
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("MinimumThroughput", flags)?.GetValue(cbStrategy)
+            .ShouldBe(2);
+    }
 }

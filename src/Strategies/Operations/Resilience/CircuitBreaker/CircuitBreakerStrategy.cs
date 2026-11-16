@@ -29,6 +29,10 @@ public sealed partial class CircuitBreakerStrategy<TService>
         ICircuitBreakerStrategy<TService>
     where TService : class
 {
+    private const int DefaultSamplingDurationMs = 30_000;
+    private const int DefaultDurationOfBreakMs = 30_000;
+    private const int DefaultMinimumThroughput = 2;
+
     public CircuitBreakerStrategy(ResiliencePipelineRegistry<string> pipelineRegistry)
     {
         PipelineRegistry = pipelineRegistry;
@@ -62,11 +66,11 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     private double? FailureRatio { get; set; }
 
-    private int? SamplingDurationMs { get; set; }
+    private int SamplingDurationMs { get; set; } = DefaultSamplingDurationMs;
 
-    private int? MinimumThroughput { get; set; }
+    private int MinimumThroughput { get; set; } = DefaultMinimumThroughput;
 
-    private int? DurationOfBreakMs { get; set; }
+    private int DurationOfBreakMs { get; set; } = DefaultDurationOfBreakMs;
 
     private Action<Exception, TimeSpan>? OnBreakAction { get; set; }
 
@@ -420,9 +424,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
         return PipelineRegistry.GetOrAddPipeline<TResult>(key, builder =>
         {
             var shouldHandle = BuildPredicate<TResult>();
-            var breakDuration = DurationOfBreakMs.HasValue
-                ? TimeSpan.FromMilliseconds(DurationOfBreakMs.Value)
-                : TimeSpan.FromSeconds(30);
+            var breakDuration = TimeSpan.FromMilliseconds(DurationOfBreakMs);
 
             AddConsecutiveBreaker(builder, key, breakDuration, shouldHandle);
             AddRatioBreaker(builder, key, breakDuration, shouldHandle);
@@ -480,13 +482,8 @@ public sealed partial class CircuitBreakerStrategy<TService>
             return;
         }
 
-        var samplingDuration = SamplingDurationMs.HasValue
-            ? TimeSpan.FromMilliseconds(SamplingDurationMs.Value)
-            : TimeSpan.FromSeconds(30);
-
-        var minThroughput = MinimumThroughput.HasValue
-            ? Math.Max(2, MinimumThroughput.Value)
-            : 2;
+        var samplingDuration = TimeSpan.FromMilliseconds(SamplingDurationMs);
+        var minThroughput = Math.Max(2, MinimumThroughput);
 
         builder.AddCircuitBreaker(new CircuitBreakerStrategyOptions<TResult>
         {

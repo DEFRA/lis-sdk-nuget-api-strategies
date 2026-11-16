@@ -11,7 +11,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
@@ -929,7 +928,6 @@ public class CircuitBreakerStrategyTests
 #pragma warning restore S3928
             new InvalidOperationException("invalid op error"),
             new UnauthorizedAccessException("unauthorized error"),
-            new XmlSchemaValidationException("schema validation error"),
         ];
 
         foreach (var exception in defaultExcludedExceptions)

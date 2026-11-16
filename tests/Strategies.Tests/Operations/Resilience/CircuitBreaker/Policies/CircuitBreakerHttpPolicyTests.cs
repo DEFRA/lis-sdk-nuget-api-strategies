@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
@@ -52,12 +53,16 @@ public class CircuitBreakerHttpPolicyTests
         strategy.WithHandledException<TimeoutRejectedException>()
             .Returns(strategy);
 
+        strategy.WithExcludedException<XmlSchemaValidationException>()
+            .Returns(strategy);
+
         // Act
         policy.Execute(strategy);
 
         // Assert
         strategy.Received(1).WithHandledException(Arg.Any<Func<Exception, CancellationToken, bool>>());
         strategy.Received(1).WithHandledException<TimeoutRejectedException>();
+        strategy.Received(1).WithExcludedException<XmlSchemaValidationException>();
         strategy.DidNotReceive().WithHandledException(Arg.Any<Func<Exception, bool>>());
         strategy.DidNotReceive().WithHandledException<TimeoutException>();
         capturedCtPredicates.Count.ShouldBe(1);
@@ -720,6 +725,36 @@ public class CircuitBreakerHttpPolicyTests
         // Assert
         fallbackCalled.ShouldBeTrue();
         onBreakCalled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StrategyExecution_WithHttpPolicy_ExcludesXmlSchemaValidationException()
+    {
+        // Arrange
+        var fallbackCalled = false;
+        var onBreakCalled = false;
+
+        var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
+            .WithLogger(logger)
+            .WithCancellationToken(CancellationToken.None)
+            .WithActionDescription("TestXmlSchemaValidationAction")
+            .WithCircuitKey("http-policy-xml-schema-validation-key")
+            .WithConsecutiveFailureThreshold(2)
+            .WithPolicy(new CircuitBreakerHttpPolicy())
+            .WithFallback(_ =>
+            {
+                fallbackCalled = true;
+                return Task.CompletedTask;
+            })
+            .OnBreak((_, _) => onBreakCalled = true)
+            .WithAction(_ => throw new XmlSchemaValidationException("schema validation error"));
+
+        // Act & Assert
+        await Should.ThrowAsync<XmlSchemaValidationException>(strategy.Execute);
+        await Should.ThrowAsync<XmlSchemaValidationException>(strategy.Execute);
+
+        onBreakCalled.ShouldBeFalse();
+        fallbackCalled.ShouldBeFalse();
     }
 
     private sealed class TestHttpClientException : HttpClientException

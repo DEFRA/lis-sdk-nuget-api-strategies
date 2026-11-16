@@ -816,7 +816,6 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
   - `ArgumentException` (including `ArgumentNullException` and `ArgumentOutOfRangeException`)
   - `InvalidOperationException`
   - `UnauthorizedAccessException`
-  - `XmlSchemaValidationException`
 - **Custom Excluded Exceptions**: Additional exceptions configured via `WithExcludedException` (or `WithDefaultExcludedException` on the factory) take strict precedence over handled exceptions. They **never contribute to opening the circuit breaker**, **bypass fallback handling**, and **propagate directly to the caller**.
 - **Caller Cancellation Excluded**: If the operation throws `OperationCanceledException` and cancellation was requested by the caller's cancellation token, this is **not treated as a circuit failure** and will not trip the circuit breaker.
 - **Handled Exceptions Rethrown Without Fallback**: If an execution encounters a handled exception and **no fallback is configured** (`WithFallback` is omitted), the failure is recorded by Polly to update circuit statistics, logged as a warning, and the exception is **rethrown (`throw;`) directly to the caller**.

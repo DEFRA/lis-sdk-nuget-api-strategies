@@ -221,9 +221,9 @@ public class CircuitBreakerStrategyFactoryTests
 
         excludedExceptions.ShouldNotBeNull();
 
-        // default 7 exclusions + 1 custom
-        excludedExceptions.Count.ShouldBe(8);
-        excludedExceptions[7](new NotFiniteNumberException(), CancellationToken.None).ShouldBeTrue();
-        excludedExceptions[7](new NotFiniteNumberException(), new CancellationToken(true)).ShouldBeFalse();
+        // default 6 exclusions + 1 custom
+        excludedExceptions.Count.ShouldBe(7);
+        excludedExceptions[6](new NotFiniteNumberException(), CancellationToken.None).ShouldBeTrue();
+        excludedExceptions[6](new NotFiniteNumberException(), new CancellationToken(true)).ShouldBeFalse();
     }
 }

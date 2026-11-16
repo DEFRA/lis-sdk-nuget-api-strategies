@@ -6,6 +6,7 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreake
 
 using System;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
@@ -29,5 +30,7 @@ public class CircuitBreakerHttpPolicy : ICircuitBreakerPolicy
              (httpClientException.InnerException is TaskCanceledException && !ct.IsCancellationRequested)));
 
         circuitBreakerStrategy.WithHandledException<TimeoutRejectedException>();
+
+        circuitBreakerStrategy.WithExcludedException<XmlSchemaValidationException>();
     }
 }

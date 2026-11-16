@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
@@ -49,7 +48,6 @@ public sealed partial class CircuitBreakerStrategy<TService>
         (ex, _) => ex is ArgumentOutOfRangeException,
         (ex, _) => ex is InvalidOperationException,
         (ex, _) => ex is UnauthorizedAccessException,
-        (ex, _) => ex is XmlSchemaValidationException,
     ];
 
     private List<Delegate> HandledResultPredicates { get; } = [];

@@ -34,7 +34,7 @@ public class SoapSchemaBuilderTests
         var builder = new SoapSchemaBuilder();
 
         // Act & Assert
-        var ex = Should.Throw<SoapSchemaException>(builder.Build);
+        var ex = Should.Throw<SoapSchemaBuilderException>(builder.Build);
 
         ex.Message.ShouldBe("At least one schema must be added to the schema builder.");
     }
@@ -82,7 +82,7 @@ public class SoapSchemaBuilderTests
         var builder = new SoapSchemaBuilder();
 
         // Act & Assert
-        var ex = Should.Throw<SoapSchemaException>(() => builder.Add("non-existent-schema.xsd"));
+        var ex = Should.Throw<SoapSchemaBuilderException>(() => builder.Add("non-existent-schema.xsd"));
 
         ex.Message.ShouldBe("Schema file 'non-existent-schema.xsd' not found.");
     }
@@ -157,7 +157,7 @@ public class SoapSchemaBuilderTests
         var builder = new SoapSchemaBuilder();
 
         // Act & Assert
-        var ex = Should.Throw<SoapSchemaException>(() =>
+        var ex = Should.Throw<SoapSchemaBuilderException>(() =>
             builder.Add(Assembly.GetExecutingAssembly(), "NonExistent.Resource.xsd"));
 
         ex.Message.ShouldContain("No embedded schema resources found in assembly");

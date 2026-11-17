@@ -9,22 +9,25 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Http.Soap.Client;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Requests.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Context;
 using Defra.Livestock.Sdk.Api.Strategies.Operations;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Rest.Client;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Client;
+using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker.Policies;
 using Defra.Livestock.Sdk.Api.Strategies.Requests.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Polly.Registry;
 using Shouldly;
 using Xunit;
 
 public class ServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddStrategyFramework_ShouldRegisterOperatorContextAndValidators()
+    public void AddStrategyFramework_ShouldRegisterOperatorContextAndValidatorsAndPolicyFactory()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -36,13 +39,41 @@ public class ServiceCollectionExtensionsTests
         returnedServices.ShouldBe(services);
 
         var operatorDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IOperatorContext));
+
         operatorDescriptor.ShouldNotBeNull();
         operatorDescriptor.ImplementationType.ShouldBe(typeof(OperatorContext));
         operatorDescriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
 
         var validatorDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IValidator<PagedQuery>));
+
         validatorDescriptor.ShouldNotBeNull();
         validatorDescriptor.ImplementationType.ShouldBe(typeof(PagedQueryValidator));
+
+        var policyFactoryDescriptor =
+            services.FirstOrDefault(sd => sd.ServiceType == typeof(ICircuitBreakerPolicyFactory));
+
+        policyFactoryDescriptor.ShouldNotBeNull();
+        policyFactoryDescriptor.ImplementationType.ShouldBe(typeof(CircuitBreakerPolicyFactory));
+        policyFactoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
+    }
+
+    [Fact]
+    public void AddCircuitBreakerPolicyFactory_ShouldRegisterTransientPolicyFactory()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        var returnedServices = services.AddCircuitBreakerPolicyFactory();
+
+        // Assert
+        returnedServices.ShouldBe(services);
+
+        var factoryDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(ICircuitBreakerPolicyFactory));
+
+        factoryDescriptor.ShouldNotBeNull();
+        factoryDescriptor.ImplementationType.ShouldBe(typeof(CircuitBreakerPolicyFactory));
+        factoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
     }
 
     [Fact]
@@ -58,6 +89,7 @@ public class ServiceCollectionExtensionsTests
         returnedServices.ShouldBe(services);
 
         var operatorDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IOperatorContext));
+
         operatorDescriptor.ShouldNotBeNull();
         operatorDescriptor.ImplementationType.ShouldBe(typeof(OperatorContext));
         operatorDescriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
@@ -76,6 +108,7 @@ public class ServiceCollectionExtensionsTests
         returnedServices.ShouldBe(services);
 
         var validatorDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IValidator<PagedQuery>));
+
         validatorDescriptor.ShouldNotBeNull();
         validatorDescriptor.ImplementationType.ShouldBe(typeof(PagedQueryValidator));
     }
@@ -92,7 +125,9 @@ public class ServiceCollectionExtensionsTests
         // Assert
         returnedServices.ShouldBe(services);
 
-        var factoryDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IRepoStrategyFactory<TestService>));
+        var factoryDescriptor =
+            services.FirstOrDefault(sd => sd.ServiceType == typeof(IRepoStrategyFactory<TestService>));
+
         factoryDescriptor.ShouldNotBeNull();
         factoryDescriptor.ImplementationType.ShouldBe(typeof(RepoStrategyFactory<TestService>));
         factoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
@@ -111,9 +146,12 @@ public class ServiceCollectionExtensionsTests
         returnedServices.ShouldBe(services);
 
         var httpClientDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(ISoapHttpClient));
+
         httpClientDescriptor.ShouldNotBeNull();
 
-        var factoryDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(ISoapStrategyFactory<TestService>));
+        var factoryDescriptor =
+            services.FirstOrDefault(sd => sd.ServiceType == typeof(ISoapStrategyFactory<TestService>));
+
         factoryDescriptor.ShouldNotBeNull();
         factoryDescriptor.ImplementationType.ShouldBe(typeof(SoapStrategyFactory<TestService>));
         factoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
@@ -147,9 +185,12 @@ public class ServiceCollectionExtensionsTests
         returnedServices.ShouldBe(services);
 
         var httpClientDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IRestHttpClient));
+
         httpClientDescriptor.ShouldNotBeNull();
 
-        var factoryDescriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(IRestStrategyFactory<TestService>));
+        var factoryDescriptor =
+            services.FirstOrDefault(sd => sd.ServiceType == typeof(IRestStrategyFactory<TestService>));
+
         factoryDescriptor.ShouldNotBeNull();
         factoryDescriptor.ImplementationType.ShouldBe(typeof(RestStrategyFactory<TestService>));
         factoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
@@ -160,6 +201,7 @@ public class ServiceCollectionExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+
         services.AddTransient<IRestHttpClient, RestHttpClient>();
 
         // Act
@@ -167,6 +209,50 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var count = services.Count(sd => sd.ServiceType == typeof(IRestHttpClient));
+
+        count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void AddCircuitBreakerStrategyFactory_ShouldRegisterRegistryAndTransientFactory()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        var returnedServices = services.AddCircuitBreakerStrategyFactory<TestService>();
+
+        // Assert
+        returnedServices.ShouldBe(services);
+
+        var registryDescriptor =
+            services.FirstOrDefault(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
+
+        registryDescriptor.ShouldNotBeNull();
+        registryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Singleton);
+
+        var factoryDescriptor =
+            services.FirstOrDefault(sd => sd.ServiceType == typeof(ICircuitBreakerStrategyFactory<TestService>));
+
+        factoryDescriptor.ShouldNotBeNull();
+        factoryDescriptor.ImplementationType.ShouldBe(typeof(CircuitBreakerStrategyFactory<TestService>));
+        factoryDescriptor.Lifetime.ShouldBe(ServiceLifetime.Transient);
+    }
+
+    [Fact]
+    public void AddCircuitBreakerStrategyFactory_WhenRegistryAlreadyRegistered_ShouldNotReRegisterRegistry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        services.AddSingleton(new ResiliencePipelineRegistry<string>());
+
+        // Act
+        services.AddCircuitBreakerStrategyFactory<TestService>();
+
+        // Assert
+        var count = services.Count(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>));
+
         count.ShouldBe(1);
     }
 }

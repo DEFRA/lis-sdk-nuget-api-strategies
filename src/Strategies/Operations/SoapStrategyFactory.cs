@@ -32,18 +32,21 @@ public sealed class SoapStrategyFactory<TService> : HttpStrategyFactoryBase<TSer
     public ISoapStrategyFactory<TService> WithDefaultServiceUrl(string serviceUrl)
     {
         DefaultServiceUrl = serviceUrl;
+
         return this;
     }
 
     public ISoapStrategyFactory<TService> WithDefaultSoapAction(string soapAction)
     {
         DefaultSoapAction = soapAction;
+
         return this;
     }
 
     public ISoapStrategyFactory<TService> WithDefaultXmlDeclaration(bool withDefaultXmlDeclaration)
     {
         DefaultXmlDeclaration = withDefaultXmlDeclaration;
+
         return this;
     }
 

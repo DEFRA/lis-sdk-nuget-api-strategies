@@ -43,48 +43,56 @@ public abstract partial class StrategyBase<TService, TParent> : IStrategy<TServi
     public TParent WithLogger(ILogger<TService> logger)
     {
         Logger = logger;
+
         return GetParentBuilder();
     }
 
     public TParent WithCancellationToken(CancellationToken cancellationToken)
     {
         CancellationToken = cancellationToken;
+
         return GetParentBuilder();
     }
 
     public TParent WithOperatorContext(IOperatorContext operatorContext)
     {
         OperatorContext = operatorContext;
+
         return GetParentBuilder();
     }
 
     public TParent WithRequiresAuthenticatedOperator()
     {
         RequiresAuthenticatedOperator = true;
+
         return GetParentBuilder();
     }
 
     public TParent WithActionDescription(string actionDescription)
     {
         ActionDescription = actionDescription;
+
         return GetParentBuilder();
     }
 
     public TParent WithBeforeExecute(Func<Task> beforeExecuteAction)
     {
         BeforeExecuteAction = beforeExecuteAction;
+
         return GetParentBuilder();
     }
 
     public TParent WithAfterExecute(Func<Task> afterExecuteAction)
     {
         AfterExecuteAction = afterExecuteAction;
+
         return GetParentBuilder();
     }
 
     public TParent WithRequestValidation(Func<Task<RequestValidationResult>> validateAction)
     {
         ValidateAction = validateAction;
+
         return GetParentBuilder();
     }
 

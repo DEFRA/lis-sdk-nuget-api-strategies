@@ -11,6 +11,7 @@ This package provides fluent strategy builders, factories, and associated compon
 - **Repository Interactions** (Create, Get, GetList, GetPaged, Update, Upsert)
 - **SOAP API Interactions** (XML/SOAP payloads, XSD schema validations, transformations)
 - **REST API Interactions** (HTTP methods, resource URLs, query parameters, JSON payloads, transformations)
+- **Circuit Breaker Resilience** (Consecutive failure counts, failure ratio, sampling window, minimum throughput, half-open probing, fallback)
 
 ---
 
@@ -34,6 +35,7 @@ services.AddStrategyValidators();
 services.AddRepoStrategyFactory<MyService>();
 services.AddSoapStrategyFactory<MyService>();
 services.AddRestStrategyFactory<MyService>();
+services.AddCircuitBreakerStrategyFactory<MyService>();
 ```
 
 ---
@@ -689,4 +691,340 @@ await _restFactory.BuildRestStrategy()
     .WithResourceUrl("/api/v1/movements/MOV-12345")
     .WithHeader("X-Correlation-ID", Guid.NewGuid().ToString())
     .ExecuteWithoutResponse();
+```
+
+### HTTP Client Exception Extensions (`HttpClientExceptionExtensions`)
+
+Extension methods extending `HttpClientException` (the abstract base class for `RestRequestException`, `RestResponseException`, `SoapRequestException`, and `SoapResponseException`):
+- `StatusCode()` - Extracts the `HttpStatusCode?` from the inner `HttpRequestException`.
+- `IsNotFound()` - Returns `true` if HTTP status is `404 Not Found`.
+- `IsBadRequest()` - Returns `true` if HTTP status is `400 Bad Request`.
+- `IsUnprocessableEntity()` - Returns `true` if HTTP status is `422 Unprocessable Entity`.
+- `IsConflict()` - Returns `true` if HTTP status is `409 Conflict`.
+- `IsServiceUnavailable()` - Returns `true` if HTTP status is `503 Service Unavailable`.
+- `IsGatewayTimeout()` - Returns `true` if HTTP status is `504 Gateway Timeout`.
+- `IsUnauthorized()` - Returns `true` if HTTP status is `401 Unauthorized`.
+- `IsForbidden()` - Returns `true` if HTTP status is `403 Forbidden`.
+- `IsTooManyRequests()` - Returns `true` if HTTP status is `429 Too Many Requests`.
+- `IsInternalServerError()` - Returns `true` if HTTP status is `500 Internal Server Error`.
+- `Is400RangeError()` - Returns `true` if HTTP status code is in the 4xx client error range (`400`–`499`).
+- `Is500RangeError()` - Returns `true` if HTTP status code is in the 5xx server error range (`500`–`599`).
+- `IsNetworkError()` - Returns `true` if the inner exception is an `HttpRequestException` with null or `0` status code (indicating a network or transport failure).
+
+---
+
+## 4. Circuit Breaker Strategy (`ICircuitBreakerStrategyFactory<TService>`)
+
+The Circuit Breaker strategy builder and factory provide resilience protection for external calls (REST, SOAP, databases, message queues, third-party integrations) using Polly v8 resilience pipelines.
+
+### Registering and Injecting Circuit Breaker Strategy Factory
+
+Register the factory via `IServiceCollection`:
+```csharp
+services.AddCircuitBreakerStrategyFactory<MyService>();
+// Or register the full strategy framework including policy factories:
+services.AddStrategyFramework();
+```
+
+Inject and preconfigure factory defaults in your consuming service constructor:
+```csharp
+public class ExternalLivestockService
+{
+    private readonly ICircuitBreakerStrategyFactory<ExternalLivestockService> _circuitBreakerFactory;
+
+    public ExternalLivestockService(
+        ICircuitBreakerStrategyFactory<ExternalLivestockService> circuitBreakerFactory,
+        ICircuitBreakerPolicyFactory policyFactory,
+        ILogger<ExternalLivestockService> logger,
+        IOperatorContext operatorContext)
+    {
+        _circuitBreakerFactory = circuitBreakerFactory
+            .WithDefaultLogger(logger)
+            .WithDefaultOperatorContext(operatorContext)
+            .WithDefaultCircuitKey("LivestockExternalApi")
+            .WithDefaultConsecutiveFailureThreshold(3)
+            .WithDefaultDurationOfBreak(30000) // 30,000 ms (30 seconds)
+            .WithDefaultPolicy(policyFactory.CreateHttpPolicy()); // Apply HTTP resilience policy defaults
+    }
+}
+```
+
+### Shared Circuit Breaker State & `WithDefaultCircuitKey`
+
+Circuit breaker resilience pipelines are managed through a singleton `ResiliencePipelineRegistry<string>` registered in DI, allowing circuit health and failure states to be **shared across requests and threads**.
+
+> **Important**: Setting `WithDefaultCircuitKey(circuitKey)` on the factory assigns that key to all strategies produced by `BuildCircuitBreakerStrategy()`. This puts all subsequent operations created by that factory on the **exact same circuit breaker**. If the circuit trips due to failures in one operation or request, all other operations sharing that circuit key will immediately fast-fail (or execute their configured fallback) without hitting downstream dependencies.
+
+### Factory Defaults for Circuit Breaker Strategies (`ICircuitBreakerStrategyFactory<TService>`)
+
+The factory exposes the following methods to establish default options inherited by all created strategy instances:
+- `WithDefaultCircuitKey(string circuitKey)` - Sets default circuit key identifier.
+- `WithDefaultConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets default consecutive failure count before tripping.
+- `WithDefaultFailureRatio(double failureRatio)` - Sets default failure ratio threshold (`0.001` to `1.0`).
+- `WithDefaultSamplingDuration(int samplingDurationMs)` - Sets default sampling time window in milliseconds (strategy defaults to `30,000` ms / 30s if omitted).
+- `WithDefaultMinimumThroughput(int minimumThroughput)` - Sets default minimum request count within sampling window (strategy defaults to `2` if omitted).
+- `WithDefaultDurationOfBreak(int durationOfBreakMs)` - Sets default duration in milliseconds the circuit remains open (strategy defaults to `30,000` ms / 30s if omitted).
+- `WithDefaultHandledException<TException>()` - Registers a default exception type treated as failure.
+- `WithDefaultHandledException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate treated as failure.
+- `WithDefaultHandledException(Func<Exception, CancellationToken, bool> predicate)` - Registers a default custom exception predicate evaluated with the active cancellation token treated as failure.
+- `WithDefaultExcludedException<TException>()` - Registers a default exception type explicitly excluded from contributing to circuit failures.
+- `WithDefaultExcludedException(Func<Exception, bool> predicate)` - Registers a default custom exception predicate explicitly excluded from contributing to circuit failures.
+- `WithDefaultExcludedException(Func<Exception, CancellationToken, bool> predicate)` - Registers a default custom exception predicate evaluated with the active cancellation token explicitly excluded from contributing to circuit failures.
+- `WithDefaultPolicy(ICircuitBreakerPolicy policy)` - Applies a reusable policy (e.g. `CircuitBreakerHttpPolicy` or custom policy) to every strategy created by the factory.
+- `WithDefaultOnBreak(Action<Exception, TimeSpan> onBreakAction)` - Sets default callback when circuit opens.
+- `WithDefaultOnReset(Action onResetAction)` - Sets default callback when circuit resets to closed.
+- `WithDefaultOnHalfOpen(Action onHalfOpenAction)` - Sets default callback when circuit enters half-open state.
+- `BuildCircuitBreakerStrategy()` - Creates an `ICircuitBreakerStrategy<TService>` instance pre-populated with factory defaults.
+
+### Minimum and Allowed Parameter Values
+
+When providing values to either the factory defaults or strategy builder methods, the following constraints apply:
+- **`ConsecutiveFailureThreshold`**: Minimum value is `1` failure (`ArgumentOutOfRangeException` thrown if `< 1`).
+- **`FailureRatio`**: Range must be between `0.001` (0.1%) and `1.0` (100%) (`ArgumentOutOfRangeException` thrown if outside this range).
+- **`SamplingDuration` (ms)**: Minimum value is `1` millisecond (`ArgumentOutOfRangeException` thrown if `< 1`). If omitted, defaults to `30,000` ms (30s).
+- **`MinimumThroughput`**: Minimum value is `1` request (`ArgumentOutOfRangeException` thrown if `< 1`). If omitted, defaults to `2`.
+- **`DurationOfBreak` (ms)**: Minimum value is `1` millisecond (`ArgumentOutOfRangeException` thrown if `< 1`). If omitted, defaults to `30,000` ms (30s).
+- **Threshold Requirement**: At least one threshold must be configured (`WithConsecutiveFailureThreshold`, `WithFailureRatio`, or both). If neither is configured, `InvalidOperationException` is thrown upon execution.
+- **Circuit Key & CancellationToken Requirement**: Both `CircuitKey` (non-empty string) and `CancellationToken` are mandatory for execution; omitting either throws `InvalidOperationException`.
+
+### Circuit Breaker Strategy Fluent Methods (`ICircuitBreakerStrategy<TService>`)
+
+Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
+
+#### Configuration:
+- `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"`.
+- `WithConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets consecutive failure threshold (min `1`).
+- `WithFailureRatio(double failureRatio)` - Sets failure ratio threshold (min `0.001`, max `1.0`).
+- `WithSamplingDuration(int samplingDurationMs)` - Sets sampling window in milliseconds (min `1`, defaults to `30,000` ms / 30s).
+- `WithMinimumThroughput(int minimumThroughput)` - Sets minimum throughput before failure ratio is evaluated (min `1`, defaults to `2`).
+- `WithDurationOfBreak(int durationOfBreakMs)` - Sets break duration in milliseconds (min `1`, defaults to `30,000` ms / 30s).
+- `WithPolicy(ICircuitBreakerPolicy policy)` - Applies a reusable policy (e.g. `CircuitBreakerHttpPolicy` or custom policy) to configure handled and excluded rules on the strategy instance.
+- `WithHandledException<TException>()` - Specifies an exception type contributing to circuit failures.
+- `WithHandledException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions contributing to failures.
+- `WithHandledException(Func<Exception, CancellationToken, bool> predicate)` - Specifies a predicate evaluated with the active cancellation token for exceptions contributing to failures.
+- `WithExcludedException<TException>()` - Specifies an exception type explicitly excluded from contributing to circuit failures.
+- `WithExcludedException(Func<Exception, bool> predicate)` - Specifies a predicate for exceptions explicitly excluded from contributing to failures.
+- `WithExcludedException(Func<Exception, CancellationToken, bool> predicate)` - Specifies a predicate evaluated with the active cancellation token for exceptions explicitly excluded from contributing to failures.
+- `WithHandledResult<TResult>(Func<TResult, bool> predicate)` - Specifies a predicate treating returned result models as failures.
+
+#### Protected Actions & Fallbacks:
+- `WithAction(Func<CancellationToken, Task> action)` - Configures a void / `Task` async action to protect.
+- `WithAction<TResult>(Func<CancellationToken, Task<TResult>> action)` - Configures a result-returning (`Task<TResult>`) async action to protect.
+- `WithFallback(Func<CancellationToken, Task> fallbackAction)` - Configures a fallback action for void / `Task` operations.
+- `WithFallback<TResult>(Func<CancellationToken, Task<TResult>> fallbackAction)` - Configures a fallback action for `Task<TResult>` operations.
+
+#### Exception Handling & Rethrow Semantics:
+- **Default Handled Exceptions**: If no `WithHandledException` or policy is configured, **all exceptions are handled by default** (`HandledExceptions.Count == 0`), with the exception of default excluded exceptions and caller cancellation.
+- **Default Excluded Exceptions**: The following exceptions are excluded by default and will **never trip the circuit breaker** or execute fallbacks:
+  - `StrategyPreConditionException` (and all derived exceptions: `BusinessRuleException`, `ConflictRuleException`, `EntityNotFoundException`, `ExistenceRuleException`, `ReferenceRuleException`, `RequestValidationException`, `SoapSchemaBuilderException`)
+  - `ArgumentException` (including `ArgumentNullException` and `ArgumentOutOfRangeException`)
+  - `InvalidOperationException`
+  - `UnauthorizedAccessException`
+- **Custom Excluded Exceptions**: Additional exceptions configured via `WithExcludedException` (or `WithDefaultExcludedException` on the factory) take strict precedence over handled exceptions. They **never contribute to opening the circuit breaker**, **bypass fallback handling**, and **propagate directly to the caller**.
+- **Automatic Caller Cancellation Exclusion**: When an operation throws `OperationCanceledException` (or `TaskCanceledException`) and cancellation was requested by the caller's `CancellationToken` (`cancellationToken.IsCancellationRequested == true`), the circuit breaker **automatically excludes** it. Caller cancellation is treated as an intentional abort rather than a downstream service failure. It **never counts as a failure**, **never contributes to tripping the circuit breaker**, and bypasses fallback logic to propagate the cancellation exception directly to the caller.
+- **Handled Exceptions Rethrown Without Fallback**: If an execution encounters a handled exception and **no fallback is configured** (`WithFallback` is omitted), the failure is recorded by Polly to update circuit statistics, logged as a warning, and the exception is **rethrown (`throw;`) directly to the caller**.
+- **Fallback Invocation**: When a fallback is provided, handled exceptions and open circuit rejections will invoke the fallback delegate and return its result rather than throwing.
+- **Circuit Breaker Open Exception (`CircuitBreakerOpenException`)**: When the circuit is `Open` and no fallback is configured, attempting execution fast-fails and throws `CircuitBreakerOpenException` with message `$"Circuit '{CircuitKey}' is OPEN. Requests are blocked."`, wrapping Polly's inner `BrokenCircuitException`.
+
+#### Lifecycle Callbacks (`On...` Methods):
+The `On...` methods are **optional** lifecycle hooks for observability, metric emission, or alerting:
+- **`OnBreak(Action<Exception, TimeSpan> onBreakAction)`**: Invoked when the circuit trips from Closed or Half-Open to **Open**. Passes the triggering `Exception` and the `TimeSpan` break duration.
+- **`OnReset(Action onResetAction)`**: Invoked when the circuit successfully recovers and resets to **Closed** (healthy). Normal traffic resumes.
+- **`OnHalfOpen(Action onHalfOpenAction)`**: Invoked when the break duration expires and the circuit transitions to **Half-Open**. In this state, Polly allows a single trial probe call through to test downstream health while blocking concurrent requests.
+
+#### Multi-Circuit / Multi-Breaker Approach:
+The builder supports combining **both** `WithConsecutiveFailureThreshold` and `WithFailureRatio` on the exact same strategy / circuit key:
+- When both thresholds are configured, the pipeline builds a **composite multi-circuit resilience pipeline** containing two distinct, independent circuit breakers:
+  - `{circuitKey}:consecutive` (consecutive failure count breaker)
+  - `{circuitKey}:ratio` (sliding window rate-based breaker)
+- **Independent State Machines**: Each breaker maintains its own counters, timers, and state transitions independently.
+- **Tripping Condition (OR Logic)**: The composite circuit trips if **either** breaker opens:
+  - Trips immediately if severe sequential failures occur (e.g. 3 consecutive connection drops).
+  - Trips if background error rate exceeds the configured ratio within the sampling duration (e.g. 40% failures across 50 requests over 60 seconds).
+- **Blocking & Protection**: As soon as either breaker is Open, execution is blocked and diverted to the fallback delegate (or throws `CircuitBreakerOpenException`), protecting the downstream service from overload.
+
+#### Execution Methods:
+- `Execute()` - Executes a void / `Task` action within the circuit breaker.
+- `Execute<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
+
+---
+
+## 5. Circuit Breaker Policies (`ICircuitBreakerPolicy`, `CircuitBreakerHttpPolicy`, `ICircuitBreakerPolicyFactory`)
+
+Circuit breaker policies encapsulate reusable sets of handled exceptions, excluded exceptions, and result predicates to enforce consistent failure criteria across applications.
+
+### `CircuitBreakerHttpPolicy`
+
+`CircuitBreakerHttpPolicy` provides standard, battle-tested resilience rules tailored for HTTP, REST, and SOAP communications:
+
+#### Handled Failure Conditions:
+1. **HTTP Client Exceptions (`HttpClientException`)**:
+   `HttpClientException` is the common abstract base exception for all strategy HTTP clients. By pattern matching `ex is HttpClientException`, the policy automatically brings all derived exceptions into scope:
+   - `RestRequestException` (REST client request/transport failures)
+   - `RestResponseException` (REST client HTTP error responses)
+   - `SoapRequestException` (SOAP client request/transport failures)
+   - `SoapResponseException` (SOAP client HTTP error responses)
+
+   For any `HttpClientException` (or derived type), the circuit breaker handles:
+   - **Network & Transport Errors**: `httpClientException.IsNetworkError()` (e.g., DNS failures, connection drops, socket errors with status code 0 or null).
+   - **Rate Limiting**: `httpClientException.IsTooManyRequests()` (HTTP 429 Too Many Requests).
+   - **Server Errors**: `httpClientException.Is500RangeError()` (HTTP 500–599 server error status codes).
+   - **Timeouts**:
+     - `httpClientException.InnerException is TimeoutException`
+     - `httpClientException.InnerException is OperationCanceledException { InnerException: TimeoutException }`
+     - `httpClientException.InnerException is TaskCanceledException` when the caller's cancellation token was **not** requested (indicating an internal HTTP client request timeout rather than user cancellation).
+
+2. **Polly Timeout Rejections**:
+   - `TimeoutRejectedException` (Polly timeout pipeline rejections).
+
+#### Excluded Exceptions:
+- **`XmlSchemaValidationException`**: Schema validation errors are client-side payload validation issues and are explicitly excluded so they never contribute to circuit breaker failure counters or trip the circuit.
+- **Caller Cancellation**: If `TaskCanceledException` or `OperationCanceledException` occurs because the caller's cancellation token was cancelled (`ct.IsCancellationRequested == true`), it is automatically excluded by both the policy condition and the strategy pipeline, and will not count as a failure or trip the circuit breaker.
+
+---
+
+### `CircuitBreakerPolicyFactory` (`ICircuitBreakerPolicyFactory`)
+
+The policy factory provides a clean mechanism to create pre-configured policies:
+
+#### DI Registration:
+```csharp
+services.AddCircuitBreakerPolicyFactory();
+// Or via the complete strategy framework:
+services.AddStrategyFramework();
+```
+
+#### Usage with Strategy Factory:
+```csharp
+public class LivestockApiClient
+{
+    private readonly ICircuitBreakerStrategyFactory<LivestockApiClient> _strategyFactory;
+
+    public LivestockApiClient(
+        ICircuitBreakerStrategyFactory<LivestockApiClient> strategyFactory,
+        ICircuitBreakerPolicyFactory policyFactory)
+    {
+        _strategyFactory = strategyFactory
+            .WithDefaultCircuitKey("LivestockApi")
+            .WithDefaultConsecutiveFailureThreshold(3)
+            .WithDefaultPolicy(policyFactory.CreateHttpPolicy()); // Pre-configure all strategies with HTTP policy
+    }
+}
+```
+
+---
+
+### Creating Custom Circuit Breaker Policies (`ICircuitBreakerPolicy`)
+
+Custom policies allow encapsulating domain-specific failure rules, database error classifications, message queue retry/breaker rules, or third-party SDK exceptions into reusable, testable policy classes.
+
+#### Implementing `ICircuitBreakerPolicy`:
+```csharp
+using System;
+using System.Data.Common;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker;
+using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.CircuitBreaker.Policies;
+
+public class DatabaseCircuitBreakerPolicy : ICircuitBreakerPolicy
+{
+    public void Execute<TService>(ICircuitBreakerStrategy<TService> circuitBreakerStrategy)
+        where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(circuitBreakerStrategy);
+
+        // Handle database transport / connection exceptions
+        circuitBreakerStrategy.WithHandledException<DbException>(ex =>
+            ex.IsTransient || ex.Message.Contains("Timeout", StringComparison.OrdinalIgnoreCase));
+
+        circuitBreakerStrategy.WithHandledException<TimeoutException>();
+
+        // Exclude constraint / data integrity errors (they are client/data errors, not infrastructure outages)
+        circuitBreakerStrategy.WithExcludedException<InvalidOperationException>();
+    }
+}
+```
+
+#### Applying Custom Policies:
+```csharp
+// Apply directly on a strategy instance:
+await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+    .WithCancellationToken(cancellationToken)
+    .WithActionDescription("Query Database")
+    .WithCircuitKey("LivestockDb")
+    .WithConsecutiveFailureThreshold(3)
+    .WithPolicy(new DatabaseCircuitBreakerPolicy())
+    .WithAction(async ct => await _repository.GetLivestockRecordsAsync(ct))
+    .Execute<List<LivestockRecord>>();
+
+// Or apply as default policy on factory:
+_circuitBreakerFactory.WithDefaultPolicy(new DatabaseCircuitBreakerPolicy());
+```
+
+---
+
+### Circuit Breaker Examples
+
+#### 1. Void / `Task` Operation with HTTP Policy & Fallback:
+```csharp
+await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+    .WithCancellationToken(cancellationToken)
+    .WithActionDescription("Delete Animal Record")
+    .WithCircuitKey("AnimalDeletionApi")
+    .WithConsecutiveFailureThreshold(3)
+    .WithDurationOfBreak(30000) // 30 seconds
+    .WithPolicy(new CircuitBreakerHttpPolicy())
+    .WithAction(async ct => await _apiClient.DeleteAnimalAsync(animalId, ct))
+    .WithFallback(async ct => await _deadLetterQueue.EnqueueDeleteAsync(animalId, ct))
+    .Execute();
+```
+
+#### 2. Generic `Task<TResult>` Operation with Failure Ratio & Factory HTTP Policy:
+```csharp
+// Strategy inherits WithDefaultPolicy(policyFactory.CreateHttpPolicy()) from factory
+AnimalDto animal = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+    .WithCancellationToken(cancellationToken)
+    .WithActionDescription("Get Animal Details")
+    .WithCircuitKey("AnimalLookupApi")
+    .WithFailureRatio(0.5) // Trip if 50% fail
+    .WithSamplingDuration(30000) // 30-second sliding window
+    .WithMinimumThroughput(10) // Require at least 10 requests in window
+    .WithDurationOfBreak(15000) // 15-second break
+    .WithAction(async ct => await _apiClient.GetAnimalAsync(tagNumber, ct))
+    .WithFallback(async ct => await _cacheService.GetAnimalAsync(tagNumber, ct))
+    .Execute<AnimalDto>();
+```
+
+#### 3. Multi-Breaker (Consecutive + Ratio-Based) without Fallback & Catching `CircuitBreakerOpenException`:
+```csharp
+// Handled exceptions and open circuit rejections are rethrown to caller when WithFallback is omitted
+try
+{
+    MovementResult result = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
+        .WithCancellationToken(cancellationToken)
+        .WithActionDescription("Process Movement")
+        .WithCircuitKey("MovementProcessingApi")
+        .WithConsecutiveFailureThreshold(5) // Fast break on 5 consecutive failures
+        .WithFailureRatio(0.4) // OR break if 40% fail over 60 seconds
+        .WithSamplingDuration(60000)
+        .WithMinimumThroughput(20)
+        .WithDurationOfBreak(45000)
+        .WithPolicy(new CircuitBreakerHttpPolicy())
+        .OnBreak((ex, duration) => _alertService.NotifyCircuitOpened("MovementProcessingApi", ex, duration))
+        .OnReset(() => _alertService.NotifyCircuitRecovered("MovementProcessingApi"))
+        .WithAction(async ct => await _movementClient.ProcessAsync(movementRequest, ct))
+        .Execute<MovementResult>();
+}
+catch (CircuitBreakerOpenException ex)
+{
+    // Thrown when circuit is in OPEN state and no fallback is configured
+    // ex.InnerException contains Polly's BrokenCircuitException
+    _logger.LogError(ex, "Circuit '{CircuitKey}' is open. Fast-failing request.", ex.Message);
+    throw;
+}
+catch (RestRequestException ex)
+{
+    // Handled exception (derived from HttpClientException) rethrown after recording failure
+    _logger.LogError(ex, "REST request failed with network or 5xx error.");
+    throw;
+}
 ```

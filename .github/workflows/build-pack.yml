@@ -33,7 +33,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Build, test and package
-        uses: cake-build/cake-action@763b621ef69b317c1d6bde43a65f189c936b503b # master after v3.0.1: runs on node24 (unreleased)
+        uses: cake-build/cake-action@2940c2cafd64a34a3edd1d892495839ed91fd76c # master after v3.0.1: runs on node24 (unreleased)
         env:
           SOLUTION_FILE_NAME: ${{ vars.SOLUTION_FILE_NAME }}
           PACKAGE_VERSION: ${{ inputs.version }}

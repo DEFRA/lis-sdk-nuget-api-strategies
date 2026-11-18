@@ -17,25 +17,182 @@ This package provides fluent strategy builders, factories, and associated compon
 
 ## Service Collection Extensions (Dependency Injection)
 
-Register the framework and factory dependencies in your `IServiceCollection` (e.g. within `Program.cs` or `Startup.cs`):
+Register the framework and factory dependencies in your `IServiceCollection` (e.g. within `Program.cs` or `Startup.cs`).
+
+### Framework Registration
 
 ```csharp
 using Defra.Livestock.Sdk.Api.Strategies;
 
 // Register core framework components:
 // - IOperatorContext (Scoped)
-// - Strategy validators from assembly
+// - Strategy validators from executing assembly
+// - ICircuitBreakerPolicyFactory (Transient)
 services.AddStrategyFramework();
 
-// Or register individual components:
+// Or register individual framework components:
 services.AddStrategyOperatorContext();
 services.AddStrategyValidators();
+services.AddCircuitBreakerPolicyFactory();
+```
 
-// Register Strategy Factories for specific consuming services:
-services.AddRepoStrategyFactory<MyService>();
-services.AddSoapStrategyFactory<MyService>();
-services.AddRestStrategyFactory<MyService>();
-services.AddCircuitBreakerStrategyFactory<MyService>();
+---
+
+### Strategy Factory Registration Methods & Overloads
+
+Strategy factories can be registered directly with parameterless methods or pre-configured with defaults during DI registration using delegates.
+
+| Method Overload | Description |
+|---|---|
+| `AddRepoStrategyFactory<TService>()` | Registers `IRepoStrategyFactory<TService>` as transient. |
+| `AddRepoStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `IRepoStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddRepoStrategyFactory<TService, TOptions>((factory, context, options) => ...)` | Registers and pre-configures `IRepoStrategyFactory<TService>` resolving `IOptions<TOptions>`. |
+| `AddSoapStrategyFactory<TService>()` | Registers `ISoapStrategyFactory<TService>` and ensures `ISoapHttpClient` is registered. |
+| `AddSoapStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `ISoapStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddSoapStrategyFactory<TService, TOptions>((factory, context, options) => ...)` | Registers and pre-configures `ISoapStrategyFactory<TService>` resolving `IOptions<TOptions>`. |
+| `AddRestStrategyFactory<TService>()` | Registers `IRestStrategyFactory<TService>` and ensures `IRestHttpClient` is registered. |
+| `AddRestStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `IRestStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddRestStrategyFactory<TService, TOptions>((factory, context, options) => ...)` | Registers and pre-configures `IRestStrategyFactory<TService>` resolving `IOptions<TOptions>`. |
+| `AddCircuitBreakerStrategyFactory<TService>()` | Registers `ICircuitBreakerStrategyFactory<TService>` and ensures `ResiliencePipelineRegistry<string>` is registered. |
+| `AddCircuitBreakerStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `ICircuitBreakerStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddCircuitBreakerStrategyFactory<TService>((factory, context, policyFactory) => ...)` | Registers and pre-configures `ICircuitBreakerStrategyFactory<TService>` with `ICircuitBreakerPolicyFactory` and `StrategyFactoryRegistrationContext<TService>`. |
+| `AddCircuitBreakerStrategyFactory<TService, TOptions>((factory, context, policyFactory, options) => ...)` | Registers and pre-configures `ICircuitBreakerStrategyFactory<TService>` with `ICircuitBreakerPolicyFactory`, `StrategyFactoryRegistrationContext<TService>`, and `IOptions<TOptions>`. |
+
+---
+
+### `StrategyFactoryRegistrationContext<TService>`
+
+When using registration overloads with a `configure` delegate, an instance of `StrategyFactoryRegistrationContext<TService>` is passed. It provides access to scoped/transient services resolved from the current service scope:
+
+- **`context.ServiceProvider`** (`IServiceProvider`): The ambient `IServiceProvider` for resolving custom dependencies during factory instantiation.
+- **`context.OperatorContext`** (`IOperatorContext`): The registered `IOperatorContext` for passing user authorization and audit identity.
+- **`context.Logger`** (`ILogger<TService>`): The strongly-typed logger for `TService`.
+
+---
+
+### DI Registration Usage Examples
+
+#### 1. Parameterless Registration
+
+Use when factories will be configured in service constructors or strategy builders:
+
+```csharp
+services.AddRepoStrategyFactory<AnimalService>();
+services.AddSoapStrategyFactory<ExternalSoapService>();
+services.AddRestStrategyFactory<ExternalRestService>();
+services.AddCircuitBreakerStrategyFactory<ExternalRestService>();
+```
+
+#### 2. Registration with `StrategyFactoryRegistrationContext`
+
+Use to configure default factory settings (including logger, operator context, base URLs, timeouts, headers) at DI registration time:
+
+```csharp
+// REST Factory with registration context
+services.AddRestStrategyFactory<MovementService>((factory, context) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultBaseUrl("https://api.movements.service.gov.uk")
+        .WithDefaultResourceUrl("/api/v1/movements")
+        .WithDefaultTimeout(5000)
+        .WithDefaultApiKey("api-key-12345");
+});
+
+// SOAP Factory with registration context
+services.AddSoapStrategyFactory<AnimalVatService>((factory, context) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultBaseUrl("https://soap.vat.service.gov.uk")
+        .WithDefaultServiceUrl("/ws/vat.asmx")
+        .WithDefaultSoapAction("http://tempuri.org/ValidateVat")
+        .WithDefaultTimeout(10000);
+});
+
+// Repository Factory with registration context
+services.AddRepoStrategyFactory<CustomerRepositoryService>((factory, context) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultEntityDescription("Customer Record");
+});
+```
+
+#### 3. Options Pattern Registration (`<TService, TOptions>`)
+
+Use when defaults are defined in `appsettings.json` and bound to strongly-typed options models:
+
+```csharp
+// Options class
+public class LivestockApiOptions
+{
+    public string BaseUrl { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty;
+    public int TimeoutMs { get; set; } = 5000;
+}
+
+// Startup / Program.cs
+services.Configure<LivestockApiOptions>(configuration.GetSection("LivestockApi"));
+
+services.AddRestStrategyFactory<LivestockService, LivestockApiOptions>((factory, context, options) =>
+{
+    var settings = options.Value;
+
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultBaseUrl(settings.BaseUrl)
+        .WithDefaultApiKey(settings.ApiKey)
+        .WithDefaultTimeout(settings.TimeoutMs);
+});
+```
+
+#### 4. Circuit Breaker Factory Registration with Policy Factory
+
+Use `ICircuitBreakerPolicyFactory` to apply reusable resilience policies (e.g., HTTP policy) during DI registration:
+
+```csharp
+// Direct registration with policy factory
+services.AddCircuitBreakerStrategyFactory<PaymentIntegrationService>((factory, context, policyFactory) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultCircuitKey("PaymentApi")
+        .WithDefaultConsecutiveFailureThreshold(3)
+        .WithDefaultDurationOfBreak(30000)
+        .WithDefaultPolicy(policyFactory.CreateHttpPolicy());
+});
+
+// Registration with policy factory and options
+public class ResilienceOptions
+{
+    public string CircuitKey { get; set; } = "DefaultCircuit";
+    public int ConsecutiveFailures { get; set; } = 3;
+    public double FailureRatio { get; set; } = 0.5;
+    public int BreakDurationSeconds { get; set; } = 30;
+}
+
+services.Configure<ResilienceOptions>(configuration.GetSection("Resilience"));
+
+services.AddCircuitBreakerStrategyFactory<PaymentIntegrationService, ResilienceOptions>(
+    (factory, context, policyFactory, options) =>
+    {
+        var settings = options.Value;
+
+        factory
+            .WithDefaultLogger(context.Logger)
+            .WithDefaultOperatorContext(context.OperatorContext)
+            .WithDefaultCircuitKey(settings.CircuitKey)
+            .WithDefaultConsecutiveFailureThreshold(settings.ConsecutiveFailures)
+            .WithDefaultFailureRatio(settings.FailureRatio)
+            .WithDefaultDurationOfBreak(settings.BreakDurationSeconds * 1000)
+            .WithDefaultPolicy(policyFactory.CreateHttpPolicy());
+    });
 ```
 
 ---
@@ -48,6 +205,8 @@ Each factory can be injected into your service and pre-configured with default v
 
 - `WithDefaultLogger(ILogger<TService> logger)` - Sets the default logger for all strategies built by this factory.
 - `WithDefaultOperatorContext(IOperatorContext operatorContext)` - Sets the default operator context for user authorization / auditing.
+- `When(bool condition, Action<TFactory> configure, Action<TFactory>? configureElse = null)` - Conditionally executes configuration on the factory if the condition is `true` (and optional `configureElse` when `false`).
+- `When(Func<bool> predicate, Action<TFactory> configure, Action<TFactory>? configureElse = null)` - Conditionally executes configuration on the factory if the predicate evaluates to `true` (and optional `configureElse` when `false`).
 
 ### Common HTTP Strategy Factory Methods (`HttpStrategyFactoryBase<TService, TFactory>`)
 
@@ -118,6 +277,8 @@ All strategy builders inherit the following fluent configuration methods:
 | `WithBeforeExecute(Func<Task> beforeExecuteAction)` | Callback invoked prior to executing strategy logic. |
 | `WithAfterExecute(Func<Task> afterExecuteAction)` | Callback invoked after completing strategy logic. |
 | `WithRequestValidation(Func<Task<RequestValidationResult>> validateAction)` | Adds request validation logic that throws a `RequestValidationException` if invalid. |
+| `When(bool condition, Action<TParent> configure, Action<TParent>? configureElse = null)` | Conditionally executes configuration on the builder if the condition is `true` (and optional `configureElse` when `false`). |
+| `When(Func<bool> predicate, Action<TParent> configure, Action<TParent>? configureElse = null)` | Conditionally executes configuration on the builder if the predicate evaluates to `true` (and optional `configureElse` when `false`). |
 
 ---
 

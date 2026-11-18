@@ -96,6 +96,30 @@ public abstract partial class StrategyBase<TService, TParent> : IStrategy<TServi
         return GetParentBuilder();
     }
 
+    public TParent When(bool condition, Action<TParent> configure, Action<TParent>? configureElse = null)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        if (condition)
+        {
+            configure(GetParentBuilder());
+        }
+        else
+        {
+            configureElse?.Invoke(GetParentBuilder());
+        }
+
+        return GetParentBuilder();
+    }
+
+    public TParent When(Func<bool> predicate, Action<TParent> configure, Action<TParent>? configureElse = null)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        return When(predicate(), configure, configureElse);
+    }
+
     protected async Task InvokeBeforeExecuteAction()
     {
         if (BeforeExecuteAction != null)

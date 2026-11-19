@@ -20,6 +20,7 @@ using Defra.Livestock.Sdk.Api.Strategies.Requests.Pagination;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Polly.Registry;
 using Shouldly;
 using Xunit;
@@ -346,6 +347,27 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddRepoStrategyFactory_WithOptions_WhenOptionsValueIsNull_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddStrategyOperatorContext();
+        services.AddSingleton<IOptions<TestOptions>>(new OptionsWrapper<TestOptions>(null!));
+        services.AddRepoStrategyFactory<TestService, TestOptions>((_, _, _) => { });
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act & Assert
+        var exception =
+            Should.Throw<InvalidOperationException>(serviceProvider
+                .GetRequiredService<IRepoStrategyFactory<TestService>>);
+
+        exception.Message.ShouldBe("Options value for 'TestOptions' cannot be null.");
+    }
+
+    [Fact]
     public void AddSoapStrategyFactory_WithContextConfigureAction_WhenConfigureIsNull_ShouldThrowArgumentNullException()
     {
         // Arrange
@@ -476,6 +498,27 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddSoapStrategyFactory_WithOptions_WhenOptionsValueIsNull_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddStrategyOperatorContext();
+        services.AddSingleton<IOptions<TestOptions>>(new OptionsWrapper<TestOptions>(null!));
+        services.AddSoapStrategyFactory<TestService, TestOptions>((_, _, _) => { });
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act & Assert
+        var exception =
+            Should.Throw<InvalidOperationException>(serviceProvider
+                .GetRequiredService<ISoapStrategyFactory<TestService>>);
+
+        exception.Message.ShouldBe("Options value for 'TestOptions' cannot be null.");
+    }
+
+    [Fact]
     public void AddRestStrategyFactory_WithContextConfigureAction_WhenConfigureIsNull_ShouldThrowArgumentNullException()
     {
         // Arrange
@@ -602,6 +645,27 @@ public class ServiceCollectionExtensionsTests
         var count = services.Count(sd => sd.ServiceType == typeof(IRestHttpClient));
 
         count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void AddRestStrategyFactory_WithOptions_WhenOptionsValueIsNull_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddStrategyOperatorContext();
+        services.AddSingleton<IOptions<TestOptions>>(new OptionsWrapper<TestOptions>(null!));
+        services.AddRestStrategyFactory<TestService, TestOptions>((_, _, _) => { });
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act & Assert
+        var exception =
+            Should.Throw<InvalidOperationException>(serviceProvider
+                .GetRequiredService<IRestStrategyFactory<TestService>>);
+
+        exception.Message.ShouldBe("Options value for 'TestOptions' cannot be null.");
     }
 
     [Fact]
@@ -812,6 +876,29 @@ public class ServiceCollectionExtensionsTests
         // Assert
         services.Count(sd => sd.ServiceType == typeof(ResiliencePipelineRegistry<string>)).ShouldBe(1);
         services.Count(sd => sd.ServiceType == typeof(ICircuitBreakerPolicyFactory)).ShouldBe(1);
+    }
+
+    [Fact]
+    public void
+        AddCircuitBreakerStrategyFactory_WithOptions_WhenOptionsValueIsNull_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddStrategyOperatorContext();
+        services.AddCircuitBreakerPolicyFactory();
+        services.AddSingleton<IOptions<TestOptions>>(new OptionsWrapper<TestOptions>(null!));
+        services.AddCircuitBreakerStrategyFactory<TestService, TestOptions>((_, _, _, _) => { });
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Act & Assert
+        var exception =
+            Should.Throw<InvalidOperationException>(serviceProvider
+                .GetRequiredService<ICircuitBreakerStrategyFactory<TestService>>);
+
+        exception.Message.ShouldBe("Options value for 'TestOptions' cannot be null.");
     }
 
     // ReSharper disable once ClassNeverInstantiated.Local

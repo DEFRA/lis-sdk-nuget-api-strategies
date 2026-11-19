@@ -90,13 +90,16 @@ public static class ServiceCollectionExtensions
         {
             ArgumentNullException.ThrowIfNull(configure);
 
-            services.AddOptions();
-
             services.AddTransient<IRepoStrategyFactory<TService>>(sp =>
             {
                 var factory = new RepoStrategyFactory<TService>();
                 var context = CreateRegistrationContext<TService>(sp);
                 var options = sp.GetRequiredService<IOptions<TOptions>>();
+
+                if (options.Value is null)
+                {
+                    throw new InvalidOperationException($"Options value for '{typeof(TOptions).Name}' cannot be null.");
+                }
 
                 configure(factory, context, options);
 
@@ -147,13 +150,16 @@ public static class ServiceCollectionExtensions
 
             services.RegisterSoapHttpClientIfNotRegistered();
 
-            services.AddOptions();
-
             services.AddTransient<ISoapStrategyFactory<TService>>(sp =>
             {
                 var factory = new SoapStrategyFactory<TService>(sp);
                 var context = CreateRegistrationContext<TService>(sp);
                 var options = sp.GetRequiredService<IOptions<TOptions>>();
+
+                if (options.Value is null)
+                {
+                    throw new InvalidOperationException($"Options value for '{typeof(TOptions).Name}' cannot be null.");
+                }
 
                 configure(factory, context, options);
 
@@ -204,13 +210,16 @@ public static class ServiceCollectionExtensions
 
             services.RegisterRestHttpClientIfNotRegistered();
 
-            services.AddOptions();
-
             services.AddTransient<IRestStrategyFactory<TService>>(sp =>
             {
                 var factory = new RestStrategyFactory<TService>(sp);
                 var context = CreateRegistrationContext<TService>(sp);
                 var options = sp.GetRequiredService<IOptions<TOptions>>();
+
+                if (options.Value is null)
+                {
+                    throw new InvalidOperationException($"Options value for '{typeof(TOptions).Name}' cannot be null.");
+                }
 
                 configure(factory, context, options);
 
@@ -289,13 +298,17 @@ public static class ServiceCollectionExtensions
             services.RegisterResiliencePipelineRegistryIfNotRegistered();
             services.RegisterCircuitBreakerPolicyFactoryIfNotRegistered();
 
-            services.AddOptions();
-
             services.AddTransient<ICircuitBreakerStrategyFactory<TService>>(sp =>
             {
                 var factory = new CircuitBreakerStrategyFactory<TService>(sp);
                 var context = CreateRegistrationContext<TService>(sp);
                 var options = sp.GetRequiredService<IOptions<TOptions>>();
+
+                if (options.Value is null)
+                {
+                    throw new InvalidOperationException($"Options value for '{typeof(TOptions).Name}' cannot be null.");
+                }
+
                 var policyFactory = sp.GetRequiredService<ICircuitBreakerPolicyFactory>();
 
                 configure(factory, context, policyFactory, options);

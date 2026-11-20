@@ -1008,6 +1008,107 @@ The builder supports combining **both** `WithConsecutiveFailureThreshold` and `W
 - `Execute()` - Executes a void / `Task` action within the circuit breaker.
 - `Execute<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
 
+### Understanding Circuit Breaker Evaluation: Consecutive Failures vs. Failure Ratio
+
+The Circuit Breaker strategy supports two distinct resilience mechanisms that can be used individually or combined into a composite multi-breaker.
+
+```
+                                  ┌────────────────────────────────────────────────────────┐
+                                  │                     Incoming Call                      │
+                                  └──────────────────────────┬─────────────────────────────┘
+                                                             │
+                              ┌──────────────────────────────┴──────────────────────────────┐
+                              ▼                                                             ▼
+                 ┌─────────────────────────┐                                   ┌─────────────────────────┐
+                 │   Consecutive Breaker   │                                   │      Ratio Breaker      │
+                 │   ({key}:consecutive)   │                                   │      ({key}:ratio)      │
+                 └────────────┬────────────┘                                   └────────────┬────────────┘
+                              │                                                             │
+                  Fails N times in a row?                                  ≥ MinimumThroughput in last 30s?
+                              │                                                             │
+                        ┌─────┴─────┐                                                 ┌─────┴─────┐
+                       Yes          No                                               Yes          No
+                        │           │                                                 │           │
+                        ▼           ▼                                                 ▼           ▼
+                   [TRIP OPEN]  [Stay Closed]                              Failure % ≥ Ratio?  [Stay Closed]
+                                                                                      │
+                                                                                ┌─────┴─────┐
+                                                                               Yes          No
+                                                                                │           │
+                                                                                ▼           ▼
+                                                                           [TRIP OPEN]  [Stay Closed]
+```
+
+#### 1. Consecutive Failure Breaker (`WithConsecutiveFailureThreshold`)
+
+- **Purpose:** Protects against immediate, total downstream failures (e.g. network partition, crashed container, hard 500 error).
+- **Evaluation:** Counts purely sequential failures. Any successful execution immediately resets the consecutive failure counter back to `0`.
+- **Sliding Window:** Does **not** use `SamplingDuration` or `MinimumThroughput`. It solely tracks the streak of failures in a row.
+
+##### Scenario Example (`ConsecutiveFailureThreshold = 3`):
+
+| Call # | Result | Consecutive Failures | Breaker State | Explanation |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | ❌ Fail | 1 | **Closed** | 1 of 3 failures reached |
+| **2** | ❌ Fail | 2 | **Closed** | 2 of 3 failures reached |
+| **3** | ✅ Success | **0** | **Closed** | Success resets consecutive counter to 0 |
+| **4** | ❌ Fail | 1 | **Closed** | Counter restarts at 1 |
+| **5** | ❌ Fail | 2 | **Closed** | 2 of 3 failures reached |
+| **6** | ❌ Fail | 3 | **OPEN** 🚨 | Hit 3 consecutive failures; circuit opens |
+
+#### 2. Failure Ratio Breaker (`WithFailureRatio`, `WithSamplingDuration`, `WithMinimumThroughput`)
+
+- **Purpose:** Protects against high error rates or degraded service health, even when errors are interleaved with successes (e.g. 40% of database queries timing out under heavy load).
+- **Rolling Sampling Window (`SamplingDuration`):** Tracks all executions over a trailing, rolling time window (defaults to `30,000` ms / 30s). Executions older than 30 seconds age out and drop from the calculation.
+- **Minimum Throughput Gatekeeper (`MinimumThroughput`):** The minimum number of requests (successes + failures) that **must** occur within the rolling window before the failure ratio is evaluated. If throughput is below this number, the ratio breaker will **never trip**, preventing low-volume noise from opening the circuit.
+- **Failure Ratio Threshold (`FailureRatio`):** The proportion of failures to total requests required to trip the circuit (e.g. `0.5` = 50%, `0.25` = 25%, `1.0` = 100%).
+
+##### Scenario A: Low Volume / Below Minimum Throughput (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
+
+| Call # | Result | Calls in Window | Failures in Window | Failure % | Breaker State | Explanation |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | ❌ Fail | 1 | 1 | 100% | **Closed** | Throughput (1) < 10 (sample too small) |
+| **2** | ❌ Fail | 2 | 2 | 100% | **Closed** | Throughput (2) < 10 (sample too small) |
+| **3** | ❌ Fail | 3 | 3 | 100% | **Closed** | Throughput (3) < 10 (sample too small) |
+
+*Note: The ratio breaker stays closed because the total throughput in the window (3) is below `MinimumThroughput` (10).*
+
+##### Scenario B: Normal Volume Exceeding Failure Ratio (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
+
+| Call # | Result | Calls in Window | Failures in Window | Failure % | Breaker State | Explanation |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1–8** | 4 ✅ / 4 ❌ | 8 | 4 | 50% | **Closed** | Throughput (8) < 10 |
+| **9** | ✅ Success | 9 | 4 | 44.4% | **Closed** | Throughput (9) < 10 |
+| **10** | ❌ Fail | 10 | 5 | **50%** | **OPEN** 🚨 | Throughput reached (10) and failure ratio ≥ 50% (5/10) |
+
+##### Scenario C: Rolling Recovery (Failures Aging Out)
+If no further calls are made for 30 seconds, all 10 calls drop out of the sliding window, resetting both throughput and failure counts to zero.
+
+#### 3. Composite Multi-Breaker & Common Configuration Pitfalls
+
+When both `WithConsecutiveFailureThreshold` and `WithFailureRatio` are supplied:
+- Polly registers two independent circuit breakers (`{key}:consecutive` and `{key}:ratio`).
+- If **either** breaker trips, requests are blocked.
+
+##### ⚠️ Common Pitfall: Setting `MinimumThroughput` Too Low
+If you configure:
+```json
+{
+  "CircuitBreakerConsecutiveFailureThreshold": "5",
+  "CircuitBreakerFailureRatio": "0.5",
+  "CircuitBreakerMinimumThroughput": "2",
+  "CircuitBreakerSamplingDuration": "30000"
+}
+```
+- On the **2nd consecutive failure**:
+  - Consecutive breaker has only 2 of 5 failures (does not trip).
+  - But the **ratio breaker** sees 2 requests out of 2 failed ($2/2 = 100\% \ge 50\%$) and throughput ($2 \ge 2$) is met.
+  - **Result:** The ratio breaker trips on the 2nd failure, making your consecutive failure threshold of 5 ineffective!
+
+##### ✅ Recommended Best Practice:
+1. **Consecutive-Only Resilience:** If you only care about $N$ failures in a row, omit `FailureRatio`.
+2. **Composite Resilience:** When using both, set `MinimumThroughput` to a representative traffic volume (e.g. `10` or higher) so small bursts of 2–4 errors are handled by the consecutive threshold while larger error rates over time are caught by the ratio threshold.
+
 ---
 
 ## 5. Circuit Breaker Policies (`ICircuitBreakerPolicy`, `CircuitBreakerHttpPolicy`, `ICircuitBreakerPolicyFactory`)

@@ -953,7 +953,7 @@ When providing values to either the factory defaults or strategy builder methods
 Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 
 #### Configuration:
-- `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"`.
+- `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"` and sets `ActionDescription` to `"Circuit Breaker Scoped Action"` if an action description has not already been provided.
 - `WithConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets consecutive failure threshold (min `1`).
 - `WithFailureRatio(double failureRatio)` - Sets failure ratio threshold (min `0.001`, max `1.0`).
 - `WithSamplingDuration(int samplingDurationMs)` - Sets sampling window in milliseconds (min `1`, defaults to `30,000` ms / 30s).

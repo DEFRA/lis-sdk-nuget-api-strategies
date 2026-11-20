@@ -83,4 +83,149 @@ public class StrategyFactoryBaseTests
         strategyBuilder.DidNotReceive().WithLogger(Arg.Any<ILogger<TestService>>());
         strategyBuilder.DidNotReceive().WithOperatorContext(Arg.Any<IOperatorContext>());
     }
+
+    [Fact]
+    public void When_WithBooleanTrue_ShouldExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = factory.When(
+            true,
+            f =>
+            {
+                configured = true;
+                f.WithDefaultLogger(logger);
+            },
+            _ => elseConfigured = true);
+
+        // Assert
+        result.ShouldBe(factory);
+        configured.ShouldBeTrue();
+        elseConfigured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void When_WithBooleanFalseAndConfigureElse_ShouldExecuteConfigureElseActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = factory.When(
+            false,
+            _ => configured = true,
+            f =>
+            {
+                elseConfigured = true;
+                f.WithDefaultLogger(logger);
+            });
+
+        // Assert
+        result.ShouldBe(factory);
+        configured.ShouldBeFalse();
+        elseConfigured.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void When_WithBooleanFalseAndNoConfigureElse_ShouldNotExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+
+        // Act
+        var result = factory.When(
+            false,
+            _ => configured = true);
+
+        // Assert
+        result.ShouldBe(factory);
+        configured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void When_WithBooleanAndNullConfigure_ShouldThrowArgumentNullException()
+    {
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => factory.When(true, null!));
+    }
+
+    [Fact]
+    public void When_WithPredicateTrue_ShouldExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = factory.When(
+            () => true,
+            f =>
+            {
+                configured = true;
+                f.WithDefaultLogger(logger);
+            },
+            _ => elseConfigured = true);
+
+        // Assert
+        result.ShouldBe(factory);
+        configured.ShouldBeTrue();
+        elseConfigured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void When_WithPredicateFalseAndConfigureElse_ShouldExecuteConfigureElseActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = factory.When(
+            () => false,
+            _ => configured = true,
+            f =>
+            {
+                elseConfigured = true;
+                f.WithDefaultLogger(logger);
+            });
+
+        // Assert
+        result.ShouldBe(factory);
+        configured.ShouldBeFalse();
+        elseConfigured.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void When_WithPredicateFalseAndNoConfigureElse_ShouldNotExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+
+        // Act
+        var result = factory.When(
+            () => false,
+            _ => configured = true);
+
+        // Assert
+        result.ShouldBe(factory);
+        configured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void When_WithNullPredicate_ShouldThrowArgumentNullException()
+    {
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => factory.When(null!, _ => { }));
+    }
+
+    [Fact]
+    public void When_WithPredicateAndNullConfigure_ShouldThrowArgumentNullException()
+    {
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => factory.When(() => true, null!));
+    }
 }

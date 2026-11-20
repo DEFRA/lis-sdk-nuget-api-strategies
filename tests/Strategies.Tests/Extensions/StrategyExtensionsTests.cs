@@ -2,7 +2,7 @@
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
-namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Operations.Extensions;
+namespace Defra.Livestock.Sdk.Api.Strategies.Tests.Extensions;
 
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Base;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
@@ -11,10 +11,8 @@ using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using FluentValidation;
 using FluentValidation.Results;
 using NSubstitute;
-using Shouldly;
-using Xunit;
 
-public class FluentValidationExtensionsTests
+public class StrategyExtensionsTests
 {
     private readonly IStrategy<TestService, ITestStrategy> strategy =
         Substitute.For<IStrategy<TestService, ITestStrategy>, ITestStrategy>();

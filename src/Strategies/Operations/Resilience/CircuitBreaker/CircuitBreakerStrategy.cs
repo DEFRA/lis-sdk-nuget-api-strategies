@@ -85,6 +85,11 @@ public sealed partial class CircuitBreakerStrategy<TService>
         CircuitKey = circuitKey;
         TargetDescription = $"circuit-breaker-{circuitKey}";
 
+        if (ActionDescription == null)
+        {
+            WithActionDescription("Circuit Breaker Scoped Action");
+        }
+
         return this;
     }
 
@@ -345,14 +350,14 @@ public sealed partial class CircuitBreakerStrategy<TService>
             throw new InvalidOperationException(StrategyConstants.Errors.CancellationTokenRequired);
         }
 
-        if (ActionDescription == null)
-        {
-            throw new InvalidOperationException(StrategyConstants.Errors.ActionDescriptionRequired);
-        }
-
         if (CircuitKey == null)
         {
             throw new InvalidOperationException(CircuitBreakerStrategyConstants.Errors.CircuitKeyRequired);
+        }
+
+        if (ActionDescription == null)
+        {
+            throw new InvalidOperationException(StrategyConstants.Errors.ActionDescriptionRequired);
         }
 
         if (TargetDescription == null)

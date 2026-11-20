@@ -53,21 +53,43 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public void WithCircuitKey_SetsCircuitKeyAndTargetDescription()
+    public void
+        WithCircuitKey_WhenActionDescriptionNotProvided_SetsCircuitKeyTargetDescriptionAndDefaultActionDescription()
     {
         // Arrange
-        var strategy = CreateStrategy();
+        var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry);
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
         // Act
         strategy.WithCircuitKey("my-circuit-key");
 
         // Assert
-        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("CircuitKey", flags)?.GetValue(strategy)
             .ShouldBe("my-circuit-key");
         typeof(CircuitBreakerStrategy<TestService>).GetProperty("TargetDescription", flags)?.GetValue(strategy)
             .ShouldBe("circuit-breaker-my-circuit-key");
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("ActionDescription", flags)?.GetValue(strategy)
+            .ShouldBe("Circuit Breaker Scoped Action");
+    }
+
+    [Fact]
+    public void WithCircuitKey_WhenActionDescriptionAlreadyProvided_DoesNotOverwriteActionDescription()
+    {
+        // Arrange
+        var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
+            .WithActionDescription("Custom Action Description");
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+        // Act
+        strategy.WithCircuitKey("my-circuit-key");
+
+        // Assert
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("CircuitKey", flags)?.GetValue(strategy)
+            .ShouldBe("my-circuit-key");
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("TargetDescription", flags)?.GetValue(strategy)
+            .ShouldBe("circuit-breaker-my-circuit-key");
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("ActionDescription", flags)?.GetValue(strategy)
+            .ShouldBe("Custom Action Description");
     }
 
     [Fact]
@@ -91,17 +113,15 @@ public class CircuitBreakerStrategyTests
         // Arrange
         var strategy = CreateStrategy();
         var policy = Substitute.For<ICircuitBreakerPolicy>();
-        policy.When(p => p.Execute(strategy)).Do(_ =>
-        {
-            strategy.WithConsecutiveFailureThreshold(7);
-        });
+        policy.When(p => p.Execute(strategy)).Do(_ => { strategy.WithConsecutiveFailureThreshold(7); });
 
         // Act
         strategy.WithPolicy(policy);
 
         // Assert
         const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
-        typeof(CircuitBreakerStrategy<TestService>).GetProperty("ConsecutiveFailureThreshold", flags)?.GetValue(strategy)
+        typeof(CircuitBreakerStrategy<TestService>).GetProperty("ConsecutiveFailureThreshold", flags)
+            ?.GetValue(strategy)
             .ShouldBe(7);
     }
 
@@ -175,21 +195,27 @@ public class CircuitBreakerStrategyTests
     }
 
     [Fact]
-    public async Task Execute_WhenActionDescriptionNull_ThrowsInvalidOperationException()
+    public async Task Execute_WhenActionDescriptionNotProvided_SetsDefaultActionDescriptionAndExecutesSuccessfully()
     {
         // Arrange
+        var actionExecuted = false;
+
         var strategy = new CircuitBreakerStrategy<TestService>(pipelineRegistry)
             .WithLogger(logger)
             .WithCancellationToken(CancellationToken.None)
             .WithCircuitKey("TestKey")
             .WithConsecutiveFailureThreshold(3)
-            .WithAction(_ => Task.CompletedTask);
+            .WithAction(_ =>
+            {
+                actionExecuted = true;
+                return Task.CompletedTask;
+            });
 
         // Act
-        var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
+        await strategy.Execute();
 
         // Assert
-        ex.Message.ShouldBe(StrategyConstants.Errors.ActionDescriptionRequired);
+        actionExecuted.ShouldBeTrue();
     }
 
     [Fact]

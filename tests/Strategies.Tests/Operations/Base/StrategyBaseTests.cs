@@ -311,4 +311,153 @@ public class StrategyBaseTests
 
         strategy.CallGetOperatorLoggableId().ShouldBe(string.Empty);
     }
+
+    [Fact]
+    public void When_WithBooleanTrue_ShouldExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = strategy.When(
+            true,
+            s =>
+            {
+                configured = true;
+                s.WithActionDescription("Configured");
+            },
+            _ => elseConfigured = true);
+
+        // Assert
+        result.ShouldBe(strategy);
+        configured.ShouldBeTrue();
+        elseConfigured.ShouldBeFalse();
+        strategy.GetActionDescription().ShouldBe("Configured");
+    }
+
+    [Fact]
+    public void When_WithBooleanFalseAndConfigureElse_ShouldExecuteConfigureElseActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = strategy.When(
+            false,
+            _ => configured = true,
+            s =>
+            {
+                elseConfigured = true;
+                s.WithActionDescription("ElseConfigured");
+            });
+
+        // Assert
+        result.ShouldBe(strategy);
+        configured.ShouldBeFalse();
+        elseConfigured.ShouldBeTrue();
+        strategy.GetActionDescription().ShouldBe("ElseConfigured");
+    }
+
+    [Fact]
+    public void When_WithBooleanFalseAndNoConfigureElse_ShouldNotExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+
+        // Act
+        var result = strategy.When(
+            false,
+            _ => configured = true);
+
+        // Assert
+        result.ShouldBe(strategy);
+        configured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void When_WithBooleanAndNullConfigure_ShouldThrowArgumentNullException()
+    {
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => strategy.When(true, null!));
+    }
+
+    [Fact]
+    public void When_WithPredicateTrue_ShouldExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = strategy.When(
+            () => true,
+            s =>
+            {
+                configured = true;
+                s.WithActionDescription("PredicateConfigured");
+            },
+            _ => elseConfigured = true);
+
+        // Assert
+        result.ShouldBe(strategy);
+        configured.ShouldBeTrue();
+        elseConfigured.ShouldBeFalse();
+        strategy.GetActionDescription().ShouldBe("PredicateConfigured");
+    }
+
+    [Fact]
+    public void When_WithPredicateFalseAndConfigureElse_ShouldExecuteConfigureElseActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+        var elseConfigured = false;
+
+        // Act
+        var result = strategy.When(
+            () => false,
+            _ => configured = true,
+            s =>
+            {
+                elseConfigured = true;
+                s.WithActionDescription("PredicateElseConfigured");
+            });
+
+        // Assert
+        result.ShouldBe(strategy);
+        configured.ShouldBeFalse();
+        elseConfigured.ShouldBeTrue();
+        strategy.GetActionDescription().ShouldBe("PredicateElseConfigured");
+    }
+
+    [Fact]
+    public void When_WithPredicateFalseAndNoConfigureElse_ShouldNotExecuteConfigureActionAndReturnParent()
+    {
+        // Arrange
+        var configured = false;
+
+        // Act
+        var result = strategy.When(
+            () => false,
+            _ => configured = true);
+
+        // Assert
+        result.ShouldBe(strategy);
+        configured.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void When_WithNullPredicate_ShouldThrowArgumentNullException()
+    {
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => strategy.When(null!, _ => { }));
+    }
+
+    [Fact]
+    public void When_WithPredicateAndNullConfigure_ShouldThrowArgumentNullException()
+    {
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => strategy.When(() => true, null!));
+    }
 }

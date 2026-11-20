@@ -1,4 +1,4 @@
-﻿// <copyright file="FluentValidationExtensions.cs" company="Defra">
+﻿// <copyright file="StrategyExtensions.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -10,7 +10,10 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
 using FluentValidation;
 using FluentValidation.Results;
 
-public static class FluentValidationExtensions
+/// <summary>
+/// Strategy extensions to support Fluent Validation.
+/// </summary>
+public static class StrategyExtensions
 {
     public static TParent WithRequestValidation<TService, TParent>(
         this IStrategy<TService, TParent> strategyBuilder,

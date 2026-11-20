@@ -324,7 +324,7 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit breaker operation 'TestAction' encountered handled failure");
+            "Circuit breaker operation 'testaction' encountered handled failure");
 
         // Call 2: fails and trips circuit
         await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
@@ -342,7 +342,7 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit breaker 'consecutive-fail-key' is OPEN for action 'TestAction'");
+            "Circuit breaker 'consecutive-fail-key' is open for action 'testaction'");
     }
 
     [Fact]
@@ -380,17 +380,17 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit breaker operation 'TestAction' encountered handled failure",
+            "Circuit breaker operation 'testaction' encountered handled failure",
             count: 2);
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit breaker 'fallback-key' is OPEN for action 'TestAction'",
+            "Circuit breaker 'fallback-key' is open for action 'testaction'",
             count: 1);
 
         logger.ShouldHaveReceived(
             LogLevel.Information,
-            "Executing fallback action for 'TestAction'",
+            "Executing fallback action for 'testaction'",
             count: 3);
     }
 
@@ -605,9 +605,9 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Information,
-            "Circuit 'recovery-circuit-key:consecutive' entered HALF-OPEN state");
+            "Circuit 'recovery-circuit-key:consecutive' entered half-open state");
 
-        logger.ShouldHaveReceived(LogLevel.Information, "Circuit 'recovery-circuit-key:consecutive' reset to CLOSED");
+        logger.ShouldHaveReceived(LogLevel.Information, "Circuit 'recovery-circuit-key:consecutive' reset to closed");
     }
 
     [Fact]

@@ -277,8 +277,62 @@ All strategy builders inherit the following fluent configuration methods:
 | `WithBeforeExecute(Func<Task> beforeExecuteAction)` | Callback invoked prior to executing strategy logic. |
 | `WithAfterExecute(Func<Task> afterExecuteAction)` | Callback invoked after completing strategy logic. |
 | `WithRequestValidation(Func<Task<RequestValidationResult>> validateAction)` | Adds request validation logic that throws a `RequestValidationException` if invalid. |
+| `WithRequestValidation(Func<Task<ValidationResult>> validateAction)` | *(StrategyExtensions)* Adds FluentValidation support by executing a FluentValidation validator and automatically mapping results to `RequestValidationResult`. |
 | `When(bool condition, Action<TParent> configure, Action<TParent>? configureElse = null)` | Conditionally executes configuration on the builder if the condition is `true` (and optional `configureElse` when `false`). |
 | `When(Func<bool> predicate, Action<TParent> configure, Action<TParent>? configureElse = null)` | Conditionally executes configuration on the builder if the predicate evaluates to `true` (and optional `configureElse` when `false`). |
+
+---
+
+### FluentValidation Integration (`StrategyExtensions`)
+
+The package includes `StrategyExtensions` (in namespace `Defra.Livestock.Sdk.Api.Strategies.Operations`) providing first-class integration with [FluentValidation](https://docs.fluentvalidation.net/):
+
+- `WithRequestValidation(Func<Task<ValidationResult>> validateAction)` - Extension method available on all strategies (`IStrategy<TService, TParent>`) accepting a delegate returning FluentValidation's `ValidationResult`.
+
+#### How it works:
+1. Executes your FluentValidation validator asynchronously.
+2. Automatically maps `FluentValidation.Results.ValidationResult` to internal `RequestValidationResult`.
+3. Converts all `ValidationFailure` items to `RequestValidationFailure`, preserving:
+   - `PropertyName` and `ErrorMessage`
+   - `ErrorCode` and `AttemptedValue`
+   - `CustomState` and `FormattedMessagePlaceholderValues`
+   - `Severity` mapping (`Severity.Warning` &rarr; `RequestValidationFailureSeverity.Warning`, `Severity.Info` &rarr; `RequestValidationFailureSeverity.Info`, `Severity.Error` &rarr; `RequestValidationFailureSeverity.Error`)
+   - `RuleSetsExecuted`
+4. If validation fails (`IsValid == false`), execution halts and throws a `RequestValidationException` containing the detailed failure collection before any downstream operation logic runs.
+
+#### Example:
+```csharp
+using Defra.Livestock.Sdk.Api.Strategies.Operations; // Required for StrategyExtensions
+using FluentValidation;
+
+public class CreateAnimalHandler
+{
+    private readonly IRepoStrategyFactory<CreateAnimalHandler> _strategyFactory;
+    private readonly IValidator<CreateAnimalRequest> _validator;
+    private readonly IAnimalRepository _repository;
+
+    public CreateAnimalHandler(
+        IRepoStrategyFactory<CreateAnimalHandler> strategyFactory,
+        IValidator<CreateAnimalRequest> validator,
+        IAnimalRepository repository)
+    {
+        _strategyFactory = strategyFactory;
+        _validator = validator;
+        _repository = repository;
+    }
+
+    public async Task<AnimalDto> HandleAsync(CreateAnimalRequest request, CancellationToken cancellationToken)
+    {
+        return await _strategyFactory.BuildCreateStrategy<Animal>()
+            .WithCancellationToken(cancellationToken)
+            .WithEntityDescription("Create Animal")
+            .WithRepository(_repository)
+            .WithRequestValidation(async () => await _validator.ValidateAsync(request, cancellationToken))
+            .WithCreate(() => new Animal { Name = request.Name, TagNumber = request.TagNumber })
+            .ExecuteAndMap(animal => new AnimalDto { Id = animal.Id, Name = animal.Name });
+    }
+}
+```
 
 ---
 
@@ -1224,6 +1278,13 @@ _circuitBreakerFactory.WithDefaultPolicy(new DatabaseCircuitBreakerPolicy());
 
 ---
 
+### Circuit Breaker Exception Extensions (`ExceptionExtensions`)
+
+Extension methods extending `System.Exception` (defined under namespace `System` for direct availability without requiring additional `using` directives) for diagnosing circuit breaker exceptions:
+- `IsCircuitBreakerOpen()` - Traverses the exception and its `InnerException` hierarchy to determine if a `CircuitBreakerOpenException` is present at any level. Useful in catch blocks, middleware, error handlers, or filter pipelines where exceptions may be wrapped in higher-level exception types (e.g. `InvalidOperationException`, `AggregateException`, `RpcException`).
+
+---
+
 ### Circuit Breaker Examples
 
 #### 1. Void / `Task` Operation with HTTP Policy & Fallback:
@@ -1276,10 +1337,10 @@ try
         .WithAction(async ct => await _movementClient.ProcessAsync(movementRequest, ct))
         .Execute<MovementResult>();
 }
-catch (CircuitBreakerOpenException ex)
+catch (Exception ex) when (ex.IsCircuitBreakerOpen())
 {
     // Thrown when circuit is in OPEN state and no fallback is configured
-    // ex.InnerException contains Polly's BrokenCircuitException
+    // IsCircuitBreakerOpen() checks both root exception and any inner exception chain
     _logger.LogError(ex, "Circuit '{CircuitKey}' is open. Fast-failing request.", ex.Message);
     throw;
 }

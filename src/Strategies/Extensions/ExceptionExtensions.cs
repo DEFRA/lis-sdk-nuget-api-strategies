@@ -3,7 +3,6 @@
 // </copyright>
 
 // ReSharper disable once CheckNamespace
-
 namespace System;
 
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Exceptions;

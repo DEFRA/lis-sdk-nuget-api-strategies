@@ -18,7 +18,6 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Operations.Resilience.Circ
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Validation;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker;
-using Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreaker.Constants;
 using Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Services;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -233,7 +232,7 @@ public class CircuitBreakerStrategyTests
         var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
-        ex.Message.ShouldBe(CircuitBreakerStrategyConstants.Errors.CircuitKeyRequired);
+        ex.Message.ShouldBe("Circuit key must be provided for this operation");
     }
 
     [Fact]
@@ -248,7 +247,7 @@ public class CircuitBreakerStrategyTests
         var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
-        ex.Message.ShouldBe("Action to execute has not been configured.");
+        ex.Message.ShouldBe("Circuit breaker action to execute is required for this operation");
     }
 
     [Fact]
@@ -263,7 +262,7 @@ public class CircuitBreakerStrategyTests
         var ex = await Should.ThrowAsync<InvalidOperationException>(strategy.Execute);
 
         // Assert
-        ex.Message.ShouldBe("Circuit breaker must be configured with at least one threshold.");
+        ex.Message.ShouldBe("Circuit breaker must be configured with at least one threshold");
     }
 
     [Fact]
@@ -324,7 +323,7 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit breaker operation 'testaction' encountered handled failure");
+            "Circuit breaker 'consecutive-fail-key' encountered handled failure");
 
         // Call 2: fails and trips circuit
         await Should.ThrowAsync<HttpRequestException>(strategy.Execute);
@@ -333,12 +332,12 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit 'consecutive-fail-key:consecutive' opened for 5s due to error: boom");
+            "Circuit breaker 'consecutive-fail-key:consecutive' opened for 5s due to error: boom");
 
         // Call 3: circuit is now OPEN
         var ex = await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.Execute);
 
-        ex.Message.ShouldContain("is OPEN");
+        ex.Message.ShouldBe("Circuit breaker 'consecutive-fail-key' is open. Requests are temporarily blocked.");
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
@@ -380,7 +379,7 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit breaker operation 'testaction' encountered handled failure",
+            "Circuit breaker 'fallback-key' encountered handled failure",
             count: 2);
 
         logger.ShouldHaveReceived(
@@ -390,7 +389,7 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Information,
-            "Executing fallback action for 'testaction'",
+            "Circuit breaker 'fallback-key' Executing fallback action",
             count: 3);
     }
 
@@ -473,7 +472,9 @@ public class CircuitBreakerStrategyTests
             .WithDurationOfBreak(5000)
             .WithAction(_ => Task.FromResult(200));
 
-        await Should.ThrowAsync<CircuitBreakerOpenException>(strategy2.Execute<int>);
+        var ex = await Should.ThrowAsync<CircuitBreakerOpenException>(strategy2.Execute<int>);
+
+        ex.Message.ShouldBe("Circuit breaker 'handled-result-key' is open. Requests are temporarily blocked.");
     }
 
     [Fact]
@@ -500,9 +501,11 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit 'ratio-circuit-key:ratio' opened for 5s due to error: failed");
+            "Circuit breaker 'ratio-circuit-key:ratio' opened for 5s due to error: failed");
 
-        await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.Execute);
+        var ex = await Should.ThrowAsync<CircuitBreakerOpenException>(strategy.Execute);
+
+        ex.Message.ShouldBe("Circuit breaker 'ratio-circuit-key' is open. Requests are temporarily blocked.");
     }
 
     [Fact]
@@ -588,7 +591,7 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Warning,
-            "Circuit 'recovery-circuit-key:consecutive' opened for 0.5s due to error: temporary failure");
+            "Circuit breaker 'recovery-circuit-key:consecutive' opened for 0.5s due to error: temporary failure");
 
         // Wait for break duration to elapse so circuit enters Half-Open on next call
         await Task.Delay(600, TestContext.Current.CancellationToken);
@@ -605,9 +608,11 @@ public class CircuitBreakerStrategyTests
 
         logger.ShouldHaveReceived(
             LogLevel.Information,
-            "Circuit 'recovery-circuit-key:consecutive' entered half-open state");
+            "Circuit breaker 'recovery-circuit-key:consecutive' entered half-open state");
 
-        logger.ShouldHaveReceived(LogLevel.Information, "Circuit 'recovery-circuit-key:consecutive' reset to closed");
+        logger.ShouldHaveReceived(
+            LogLevel.Information,
+            "Circuit breaker 'recovery-circuit-key:consecutive' reset to closed");
     }
 
     [Fact]

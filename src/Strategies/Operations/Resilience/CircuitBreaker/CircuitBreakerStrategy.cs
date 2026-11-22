@@ -323,11 +323,13 @@ public sealed partial class CircuitBreakerStrategy<TService>
                 return await ExecuteFallbackWithLoggingAsync<TResult>(ct);
             }
 
-            throw new CircuitBreakerOpenException($"Circuit '{CircuitKey!}' is OPEN. Requests are blocked.", ex);
+            throw new CircuitBreakerOpenException(
+                $"Circuit breaker '{CircuitKey!}' is open. Requests are temporarily blocked.",
+                ex);
         }
         catch (Exception ex) when (IsHandledException(ex))
         {
-            LogCircuitBreakerOperationEncounteredHandledFailure(ex);
+            LogCircuitBreakerOperationEncounteredHandledFailure(CircuitKey!, ex);
 
             if (ConfiguredFallback != null)
             {
@@ -367,13 +369,12 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
         if (ConfiguredAction is null)
         {
-            throw new InvalidOperationException("Action to execute has not been configured.");
+            throw new InvalidOperationException(CircuitBreakerStrategyConstants.Errors.ActionRequired);
         }
 
         if (ConsecutiveFailureThreshold == null && FailureRatio == null)
         {
-            throw new InvalidOperationException(
-                "Circuit breaker must be configured with at least one threshold.");
+            throw new InvalidOperationException(CircuitBreakerStrategyConstants.Errors.ThresholdsRequired);
         }
     }
 
@@ -397,7 +398,7 @@ public sealed partial class CircuitBreakerStrategy<TService>
 
     private async Task<TResult> ExecuteFallbackWithLoggingAsync<TResult>(CancellationToken ct)
     {
-        LogExecutingFallbackAction();
+        LogExecutingFallbackAction(CircuitKey!);
 
         var fallbackResult = await ExecuteFallbackAsync<TResult>(ct);
 

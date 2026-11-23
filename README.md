@@ -17,25 +17,182 @@ This package provides fluent strategy builders, factories, and associated compon
 
 ## Service Collection Extensions (Dependency Injection)
 
-Register the framework and factory dependencies in your `IServiceCollection` (e.g. within `Program.cs` or `Startup.cs`):
+Register the framework and factory dependencies in your `IServiceCollection` (e.g. within `Program.cs` or `Startup.cs`).
+
+### Framework Registration
 
 ```csharp
 using Defra.Livestock.Sdk.Api.Strategies;
 
 // Register core framework components:
 // - IOperatorContext (Scoped)
-// - Strategy validators from assembly
+// - Strategy validators from executing assembly
+// - ICircuitBreakerPolicyFactory (Transient)
 services.AddStrategyFramework();
 
-// Or register individual components:
+// Or register individual framework components:
 services.AddStrategyOperatorContext();
 services.AddStrategyValidators();
+services.AddCircuitBreakerPolicyFactory();
+```
 
-// Register Strategy Factories for specific consuming services:
-services.AddRepoStrategyFactory<MyService>();
-services.AddSoapStrategyFactory<MyService>();
-services.AddRestStrategyFactory<MyService>();
-services.AddCircuitBreakerStrategyFactory<MyService>();
+---
+
+### Strategy Factory Registration Methods & Overloads
+
+Strategy factories can be registered directly with parameterless methods or pre-configured with defaults during DI registration using delegates.
+
+| Method Overload | Description |
+|---|---|
+| `AddRepoStrategyFactory<TService>()` | Registers `IRepoStrategyFactory<TService>` as transient. |
+| `AddRepoStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `IRepoStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddRepoStrategyFactory<TService, TOptions>((factory, context, options) => ...)` | Registers and pre-configures `IRepoStrategyFactory<TService>` resolving `IOptions<TOptions>`. |
+| `AddSoapStrategyFactory<TService>()` | Registers `ISoapStrategyFactory<TService>` and ensures `ISoapHttpClient` is registered. |
+| `AddSoapStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `ISoapStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddSoapStrategyFactory<TService, TOptions>((factory, context, options) => ...)` | Registers and pre-configures `ISoapStrategyFactory<TService>` resolving `IOptions<TOptions>`. |
+| `AddRestStrategyFactory<TService>()` | Registers `IRestStrategyFactory<TService>` and ensures `IRestHttpClient` is registered. |
+| `AddRestStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `IRestStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddRestStrategyFactory<TService, TOptions>((factory, context, options) => ...)` | Registers and pre-configures `IRestStrategyFactory<TService>` resolving `IOptions<TOptions>`. |
+| `AddCircuitBreakerStrategyFactory<TService>()` | Registers `ICircuitBreakerStrategyFactory<TService>` and ensures `ResiliencePipelineRegistry<string>` is registered. |
+| `AddCircuitBreakerStrategyFactory<TService>((factory, context) => ...)` | Registers and pre-configures `ICircuitBreakerStrategyFactory<TService>` with access to `StrategyFactoryRegistrationContext<TService>`. |
+| `AddCircuitBreakerStrategyFactory<TService>((factory, context, policyFactory) => ...)` | Registers and pre-configures `ICircuitBreakerStrategyFactory<TService>` with `ICircuitBreakerPolicyFactory` and `StrategyFactoryRegistrationContext<TService>`. |
+| `AddCircuitBreakerStrategyFactory<TService, TOptions>((factory, context, policyFactory, options) => ...)` | Registers and pre-configures `ICircuitBreakerStrategyFactory<TService>` with `ICircuitBreakerPolicyFactory`, `StrategyFactoryRegistrationContext<TService>`, and `IOptions<TOptions>`. |
+
+---
+
+### `StrategyFactoryRegistrationContext<TService>`
+
+When using registration overloads with a `configure` delegate, an instance of `StrategyFactoryRegistrationContext<TService>` is passed. It provides access to scoped/transient services resolved from the current service scope:
+
+- **`context.ServiceProvider`** (`IServiceProvider`): The ambient `IServiceProvider` for resolving custom dependencies during factory instantiation.
+- **`context.OperatorContext`** (`IOperatorContext`): The registered `IOperatorContext` for passing user authorization and audit identity.
+- **`context.Logger`** (`ILogger<TService>`): The strongly-typed logger for `TService`.
+
+---
+
+### DI Registration Usage Examples
+
+#### 1. Parameterless Registration
+
+Use when factories will be configured in service constructors or strategy builders:
+
+```csharp
+services.AddRepoStrategyFactory<AnimalService>();
+services.AddSoapStrategyFactory<ExternalSoapService>();
+services.AddRestStrategyFactory<ExternalRestService>();
+services.AddCircuitBreakerStrategyFactory<ExternalRestService>();
+```
+
+#### 2. Registration with `StrategyFactoryRegistrationContext`
+
+Use to configure default factory settings (including logger, operator context, base URLs, timeouts, headers) at DI registration time:
+
+```csharp
+// REST Factory with registration context
+services.AddRestStrategyFactory<MovementService>((factory, context) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultBaseUrl("https://api.movements.service.gov.uk")
+        .WithDefaultResourceUrl("/api/v1/movements")
+        .WithDefaultTimeout(5000)
+        .WithDefaultApiKey("api-key-12345");
+});
+
+// SOAP Factory with registration context
+services.AddSoapStrategyFactory<AnimalVatService>((factory, context) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultBaseUrl("https://soap.vat.service.gov.uk")
+        .WithDefaultServiceUrl("/ws/vat.asmx")
+        .WithDefaultSoapAction("http://tempuri.org/ValidateVat")
+        .WithDefaultTimeout(10000);
+});
+
+// Repository Factory with registration context
+services.AddRepoStrategyFactory<CustomerRepositoryService>((factory, context) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultEntityDescription("Customer Record");
+});
+```
+
+#### 3. Options Pattern Registration (`<TService, TOptions>`)
+
+Use when defaults are defined in `appsettings.json` and bound to strongly-typed options models:
+
+```csharp
+// Options class
+public class LivestockApiOptions
+{
+    public string BaseUrl { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty;
+    public int TimeoutMs { get; set; } = 5000;
+}
+
+// Startup / Program.cs
+services.Configure<LivestockApiOptions>(configuration.GetSection("LivestockApi"));
+
+services.AddRestStrategyFactory<LivestockService, LivestockApiOptions>((factory, context, options) =>
+{
+    var settings = options.Value;
+
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultBaseUrl(settings.BaseUrl)
+        .WithDefaultApiKey(settings.ApiKey)
+        .WithDefaultTimeout(settings.TimeoutMs);
+});
+```
+
+#### 4. Circuit Breaker Factory Registration with Policy Factory
+
+Use `ICircuitBreakerPolicyFactory` to apply reusable resilience policies (e.g., HTTP policy) during DI registration:
+
+```csharp
+// Direct registration with policy factory
+services.AddCircuitBreakerStrategyFactory<PaymentIntegrationService>((factory, context, policyFactory) =>
+{
+    factory
+        .WithDefaultLogger(context.Logger)
+        .WithDefaultOperatorContext(context.OperatorContext)
+        .WithDefaultCircuitKey("PaymentApi")
+        .WithDefaultConsecutiveFailureThreshold(3)
+        .WithDefaultDurationOfBreak(30000)
+        .WithDefaultPolicy(policyFactory.CreateHttpPolicy());
+});
+
+// Registration with policy factory and options
+public class ResilienceOptions
+{
+    public string CircuitKey { get; set; } = "DefaultCircuit";
+    public int ConsecutiveFailures { get; set; } = 3;
+    public double FailureRatio { get; set; } = 0.5;
+    public int BreakDurationSeconds { get; set; } = 30;
+}
+
+services.Configure<ResilienceOptions>(configuration.GetSection("Resilience"));
+
+services.AddCircuitBreakerStrategyFactory<PaymentIntegrationService, ResilienceOptions>(
+    (factory, context, policyFactory, options) =>
+    {
+        var settings = options.Value;
+
+        factory
+            .WithDefaultLogger(context.Logger)
+            .WithDefaultOperatorContext(context.OperatorContext)
+            .WithDefaultCircuitKey(settings.CircuitKey)
+            .WithDefaultConsecutiveFailureThreshold(settings.ConsecutiveFailures)
+            .WithDefaultFailureRatio(settings.FailureRatio)
+            .WithDefaultDurationOfBreak(settings.BreakDurationSeconds * 1000)
+            .WithDefaultPolicy(policyFactory.CreateHttpPolicy());
+    });
 ```
 
 ---
@@ -48,6 +205,8 @@ Each factory can be injected into your service and pre-configured with default v
 
 - `WithDefaultLogger(ILogger<TService> logger)` - Sets the default logger for all strategies built by this factory.
 - `WithDefaultOperatorContext(IOperatorContext operatorContext)` - Sets the default operator context for user authorization / auditing.
+- `When(bool condition, Action<TFactory> configure, Action<TFactory>? configureElse = null)` - Conditionally executes configuration on the factory if the condition is `true` (and optional `configureElse` when `false`).
+- `When(Func<bool> predicate, Action<TFactory> configure, Action<TFactory>? configureElse = null)` - Conditionally executes configuration on the factory if the predicate evaluates to `true` (and optional `configureElse` when `false`).
 
 ### Common HTTP Strategy Factory Methods (`HttpStrategyFactoryBase<TService, TFactory>`)
 
@@ -118,6 +277,62 @@ All strategy builders inherit the following fluent configuration methods:
 | `WithBeforeExecute(Func<Task> beforeExecuteAction)` | Callback invoked prior to executing strategy logic. |
 | `WithAfterExecute(Func<Task> afterExecuteAction)` | Callback invoked after completing strategy logic. |
 | `WithRequestValidation(Func<Task<RequestValidationResult>> validateAction)` | Adds request validation logic that throws a `RequestValidationException` if invalid. |
+| `WithRequestValidation(Func<Task<ValidationResult>> validateAction)` | *(StrategyExtensions)* Adds FluentValidation support by executing a FluentValidation validator and automatically mapping results to `RequestValidationResult`. |
+| `When(bool condition, Action<TParent> configure, Action<TParent>? configureElse = null)` | Conditionally executes configuration on the builder if the condition is `true` (and optional `configureElse` when `false`). |
+| `When(Func<bool> predicate, Action<TParent> configure, Action<TParent>? configureElse = null)` | Conditionally executes configuration on the builder if the predicate evaluates to `true` (and optional `configureElse` when `false`). |
+
+---
+
+### FluentValidation Integration (`StrategyExtensions`)
+
+The package includes `StrategyExtensions` (in namespace `Defra.Livestock.Sdk.Api.Strategies.Operations`) providing first-class integration with [FluentValidation](https://docs.fluentvalidation.net/):
+
+- `WithRequestValidation(Func<Task<ValidationResult>> validateAction)` - Extension method available on all strategies (`IStrategy<TService, TParent>`) accepting a delegate returning FluentValidation's `ValidationResult`.
+
+#### How it works:
+1. Executes your FluentValidation validator asynchronously.
+2. Automatically maps `FluentValidation.Results.ValidationResult` to internal `RequestValidationResult`.
+3. Converts all `ValidationFailure` items to `RequestValidationFailure`, preserving:
+   - `PropertyName` and `ErrorMessage`
+   - `ErrorCode` and `AttemptedValue`
+   - `CustomState` and `FormattedMessagePlaceholderValues`
+   - `Severity` mapping (`Severity.Warning` &rarr; `RequestValidationFailureSeverity.Warning`, `Severity.Info` &rarr; `RequestValidationFailureSeverity.Info`, `Severity.Error` &rarr; `RequestValidationFailureSeverity.Error`)
+   - `RuleSetsExecuted`
+4. If validation fails (`IsValid == false`), execution halts and throws a `RequestValidationException` containing the detailed failure collection before any downstream operation logic runs.
+
+#### Example:
+```csharp
+using Defra.Livestock.Sdk.Api.Strategies.Operations; // Required for StrategyExtensions
+using FluentValidation;
+
+public class CreateAnimalHandler
+{
+    private readonly IRepoStrategyFactory<CreateAnimalHandler> _strategyFactory;
+    private readonly IValidator<CreateAnimalRequest> _validator;
+    private readonly IAnimalRepository _repository;
+
+    public CreateAnimalHandler(
+        IRepoStrategyFactory<CreateAnimalHandler> strategyFactory,
+        IValidator<CreateAnimalRequest> validator,
+        IAnimalRepository repository)
+    {
+        _strategyFactory = strategyFactory;
+        _validator = validator;
+        _repository = repository;
+    }
+
+    public async Task<AnimalDto> HandleAsync(CreateAnimalRequest request, CancellationToken cancellationToken)
+    {
+        return await _strategyFactory.BuildCreateStrategy<Animal>()
+            .WithCancellationToken(cancellationToken)
+            .WithEntityDescription("Create Animal")
+            .WithRepository(_repository)
+            .WithRequestValidation(async () => await _validator.ValidateAsync(request, cancellationToken))
+            .WithCreate(() => new Animal { Name = request.Name, TagNumber = request.TagNumber })
+            .ExecuteAndMap(animal => new AnimalDto { Id = animal.Id, Name = animal.Name });
+    }
+}
+```
 
 ---
 
@@ -792,7 +1007,7 @@ When providing values to either the factory defaults or strategy builder methods
 Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 
 #### Configuration:
-- `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"`.
+- `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"` and sets `ActionDescription` to `"Circuit Breaker Scoped Action"` if an action description has not already been provided.
 - `WithConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets consecutive failure threshold (min `1`).
 - `WithFailureRatio(double failureRatio)` - Sets failure ratio threshold (min `0.001`, max `1.0`).
 - `WithSamplingDuration(int samplingDurationMs)` - Sets sampling window in milliseconds (min `1`, defaults to `30,000` ms / 30s).
@@ -824,7 +1039,7 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 - **Automatic Caller Cancellation Exclusion**: When an operation throws `OperationCanceledException` (or `TaskCanceledException`) and cancellation was requested by the caller's `CancellationToken` (`cancellationToken.IsCancellationRequested == true`), the circuit breaker **automatically excludes** it. Caller cancellation is treated as an intentional abort rather than a downstream service failure. It **never counts as a failure**, **never contributes to tripping the circuit breaker**, and bypasses fallback logic to propagate the cancellation exception directly to the caller.
 - **Handled Exceptions Rethrown Without Fallback**: If an execution encounters a handled exception and **no fallback is configured** (`WithFallback` is omitted), the failure is recorded by Polly to update circuit statistics, logged as a warning, and the exception is **rethrown (`throw;`) directly to the caller**.
 - **Fallback Invocation**: When a fallback is provided, handled exceptions and open circuit rejections will invoke the fallback delegate and return its result rather than throwing.
-- **Circuit Breaker Open Exception (`CircuitBreakerOpenException`)**: When the circuit is `Open` and no fallback is configured, attempting execution fast-fails and throws `CircuitBreakerOpenException` with message `$"Circuit '{CircuitKey}' is OPEN. Requests are blocked."`, wrapping Polly's inner `BrokenCircuitException`.
+- **Circuit Breaker Open Exception (`CircuitBreakerOpenException`)**: When the circuit is `Open` and no fallback is configured, attempting execution fast-fails and throws `CircuitBreakerOpenException` with message `$"Circuit breaker '{CircuitKey}' is open. Requests are temporarily blocked."`, wrapping Polly's inner `BrokenCircuitException`.
 
 #### Lifecycle Callbacks (`On...` Methods):
 The `On...` methods are **optional** lifecycle hooks for observability, metric emission, or alerting:
@@ -846,6 +1061,107 @@ The builder supports combining **both** `WithConsecutiveFailureThreshold` and `W
 #### Execution Methods:
 - `Execute()` - Executes a void / `Task` action within the circuit breaker.
 - `Execute<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
+
+### Understanding Circuit Breaker Evaluation: Consecutive Failures vs. Failure Ratio
+
+The Circuit Breaker strategy supports two distinct resilience mechanisms that can be used individually or combined into a composite multi-breaker.
+
+```
+                                  ┌────────────────────────────────────────────────────────┐
+                                  │                     Incoming Call                      │
+                                  └──────────────────────────┬─────────────────────────────┘
+                                                             │
+                              ┌──────────────────────────────┴──────────────────────────────┐
+                              ▼                                                             ▼
+                 ┌─────────────────────────┐                                   ┌─────────────────────────┐
+                 │   Consecutive Breaker   │                                   │      Ratio Breaker      │
+                 │   ({key}:consecutive)   │                                   │      ({key}:ratio)      │
+                 └────────────┬────────────┘                                   └────────────┬────────────┘
+                              │                                                             │
+                  Fails N times in a row?                                  ≥ MinimumThroughput in last 30s?
+                              │                                                             │
+                        ┌─────┴─────┐                                                 ┌─────┴─────┐
+                       Yes          No                                               Yes          No
+                        │           │                                                 │           │
+                        ▼           ▼                                                 ▼           ▼
+                   [TRIP OPEN]  [Stay Closed]                              Failure % ≥ Ratio?  [Stay Closed]
+                                                                                      │
+                                                                                ┌─────┴─────┐
+                                                                               Yes          No
+                                                                                │           │
+                                                                                ▼           ▼
+                                                                           [TRIP OPEN]  [Stay Closed]
+```
+
+#### 1. Consecutive Failure Breaker (`WithConsecutiveFailureThreshold`)
+
+- **Purpose:** Protects against immediate, total downstream failures (e.g. network partition, crashed container, hard 500 error).
+- **Evaluation:** Counts purely sequential failures. Any successful execution immediately resets the consecutive failure counter back to `0`.
+- **Sliding Window:** Does **not** use `SamplingDuration` or `MinimumThroughput`. It solely tracks the streak of failures in a row.
+
+##### Scenario Example (`ConsecutiveFailureThreshold = 3`):
+
+| Call # | Result | Consecutive Failures | Breaker State | Explanation |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | ❌ Fail | 1 | **Closed** | 1 of 3 failures reached |
+| **2** | ❌ Fail | 2 | **Closed** | 2 of 3 failures reached |
+| **3** | ✅ Success | **0** | **Closed** | Success resets consecutive counter to 0 |
+| **4** | ❌ Fail | 1 | **Closed** | Counter restarts at 1 |
+| **5** | ❌ Fail | 2 | **Closed** | 2 of 3 failures reached |
+| **6** | ❌ Fail | 3 | **OPEN** 🚨 | Hit 3 consecutive failures; circuit opens |
+
+#### 2. Failure Ratio Breaker (`WithFailureRatio`, `WithSamplingDuration`, `WithMinimumThroughput`)
+
+- **Purpose:** Protects against high error rates or degraded service health, even when errors are interleaved with successes (e.g. 40% of database queries timing out under heavy load).
+- **Rolling Sampling Window (`SamplingDuration`):** Tracks all executions over a trailing, rolling time window (defaults to `30,000` ms / 30s). Executions older than 30 seconds age out and drop from the calculation.
+- **Minimum Throughput Gatekeeper (`MinimumThroughput`):** The minimum number of requests (successes + failures) that **must** occur within the rolling window before the failure ratio is evaluated. If throughput is below this number, the ratio breaker will **never trip**, preventing low-volume noise from opening the circuit.
+- **Failure Ratio Threshold (`FailureRatio`):** The proportion of failures to total requests required to trip the circuit (e.g. `0.5` = 50%, `0.25` = 25%, `1.0` = 100%).
+
+##### Scenario A: Low Volume / Below Minimum Throughput (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
+
+| Call # | Result | Calls in Window | Failures in Window | Failure % | Breaker State | Explanation |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | ❌ Fail | 1 | 1 | 100% | **Closed** | Throughput (1) < 10 (sample too small) |
+| **2** | ❌ Fail | 2 | 2 | 100% | **Closed** | Throughput (2) < 10 (sample too small) |
+| **3** | ❌ Fail | 3 | 3 | 100% | **Closed** | Throughput (3) < 10 (sample too small) |
+
+*Note: The ratio breaker stays closed because the total throughput in the window (3) is below `MinimumThroughput` (10).*
+
+##### Scenario B: Normal Volume Exceeding Failure Ratio (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
+
+| Call # | Result | Calls in Window | Failures in Window | Failure % | Breaker State | Explanation |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1–8** | 4 ✅ / 4 ❌ | 8 | 4 | 50% | **Closed** | Throughput (8) < 10 |
+| **9** | ✅ Success | 9 | 4 | 44.4% | **Closed** | Throughput (9) < 10 |
+| **10** | ❌ Fail | 10 | 5 | **50%** | **OPEN** 🚨 | Throughput reached (10) and failure ratio ≥ 50% (5/10) |
+
+##### Scenario C: Rolling Recovery (Failures Aging Out)
+If no further calls are made for 30 seconds, all 10 calls drop out of the sliding window, resetting both throughput and failure counts to zero.
+
+#### 3. Composite Multi-Breaker & Common Configuration Pitfalls
+
+When both `WithConsecutiveFailureThreshold` and `WithFailureRatio` are supplied:
+- Polly registers two independent circuit breakers (`{key}:consecutive` and `{key}:ratio`).
+- If **either** breaker trips, requests are blocked.
+
+##### ⚠️ Common Pitfall: Setting `MinimumThroughput` Too Low
+If you configure:
+```json
+{
+  "CircuitBreakerConsecutiveFailureThreshold": "5",
+  "CircuitBreakerFailureRatio": "0.5",
+  "CircuitBreakerMinimumThroughput": "2",
+  "CircuitBreakerSamplingDuration": "30000"
+}
+```
+- On the **2nd consecutive failure**:
+  - Consecutive breaker has only 2 of 5 failures (does not trip).
+  - But the **ratio breaker** sees 2 requests out of 2 failed ($2/2 = 100\% \ge 50\%$) and throughput ($2 \ge 2$) is met.
+  - **Result:** The ratio breaker trips on the 2nd failure, making your consecutive failure threshold of 5 ineffective!
+
+##### ✅ Recommended Best Practice:
+1. **Consecutive-Only Resilience:** If you only care about $N$ failures in a row, omit `FailureRatio`.
+2. **Composite Resilience:** When using both, set `MinimumThroughput` to a representative traffic volume (e.g. `10` or higher) so small bursts of 2–4 errors are handled by the consecutive threshold while larger error rates over time are caught by the ratio threshold.
 
 ---
 
@@ -962,6 +1278,13 @@ _circuitBreakerFactory.WithDefaultPolicy(new DatabaseCircuitBreakerPolicy());
 
 ---
 
+### Circuit Breaker Exception Extensions (`ExceptionExtensions`)
+
+Extension methods extending `System.Exception` (defined under namespace `System` for direct availability without requiring additional `using` directives) for diagnosing circuit breaker exceptions:
+- `IsCircuitBreakerOpen()` - Traverses the exception and its `InnerException` hierarchy to determine if a `CircuitBreakerOpenException` is present at any level. Useful in catch blocks, middleware, error handlers, or filter pipelines where exceptions may be wrapped in higher-level exception types (e.g. `InvalidOperationException`, `AggregateException`, `RpcException`).
+
+---
+
 ### Circuit Breaker Examples
 
 #### 1. Void / `Task` Operation with HTTP Policy & Fallback:
@@ -1014,10 +1337,10 @@ try
         .WithAction(async ct => await _movementClient.ProcessAsync(movementRequest, ct))
         .Execute<MovementResult>();
 }
-catch (CircuitBreakerOpenException ex)
+catch (Exception ex) when (ex.IsCircuitBreakerOpen())
 {
     // Thrown when circuit is in OPEN state and no fallback is configured
-    // ex.InnerException contains Polly's BrokenCircuitException
+    // IsCircuitBreakerOpen() checks both root exception and any inner exception chain
     _logger.LogError(ex, "Circuit '{CircuitKey}' is open. Fast-failing request.", ex.Message);
     throw;
 }

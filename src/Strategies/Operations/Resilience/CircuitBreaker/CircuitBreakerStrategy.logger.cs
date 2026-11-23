@@ -13,45 +13,47 @@ using Microsoft.Extensions.Logging;
 /// <typeparam name="TService">The type of the service class that is consuming the derived builder.</typeparam>
 public sealed partial class CircuitBreakerStrategy<TService>
 {
-    [LoggerMessage(LogLevel.Warning, "Circuit breaker '{CircuitKey}' is OPEN for action '{ActionDescription}'")]
-    static partial void LogCircuitBreakerOpen(ILogger<TService> logger, string circuitKey, string actionDescription, Exception ex);
+    [LoggerMessage(LogLevel.Warning, "Circuit breaker '{CircuitKey}' is open for action '{ActionDescription}'")]
+    static partial void LogCircuitBreakerOpen(ILogger<TService> logger, string circuitKey, string actionDescription,
+        Exception ex);
 
-    [LoggerMessage(LogLevel.Information, "Executing fallback action for '{ActionDescription}'")]
-    static partial void LogExecutingFallbackAction(ILogger<TService> logger, string actionDescription);
+    [LoggerMessage(LogLevel.Information, "Circuit breaker '{CircuitKey}' Executing fallback action")]
+    static partial void LogExecutingFallbackAction(ILogger<TService> logger, string circuitKey);
 
-    [LoggerMessage(LogLevel.Warning, "Circuit breaker operation '{ActionDescription}' encountered handled failure")]
-    static partial void LogCircuitBreakerOperationEncounteredHandledFailure(ILogger<TService> logger, string actionDescription, Exception ex);
+    [LoggerMessage(LogLevel.Warning, "Circuit breaker '{CircuitKey}' encountered handled failure")]
+    static partial void LogCircuitBreakerOperationEncounteredHandledFailure(ILogger<TService> logger,
+        string circuitKey, Exception ex);
 
-    [LoggerMessage(LogLevel.Warning, "Circuit '{Tag}' opened for {Duration}s due to error: {Reason}")]
+    [LoggerMessage(LogLevel.Warning, "Circuit breaker '{Tag}' opened for {Duration}s due to error: {Reason}")]
     static partial void LogCircuitOpened(ILogger<TService> logger, string tag, double duration, string? reason);
 
-    [LoggerMessage(LogLevel.Information, "Circuit '{Tag}' reset to CLOSED")]
+    [LoggerMessage(LogLevel.Information, "Circuit breaker '{Tag}' reset to closed")]
     static partial void LogCircuitClosed(ILogger<TService> logger, string tag);
 
-    [LoggerMessage(LogLevel.Information, "Circuit '{Tag}' entered HALF-OPEN state")]
+    [LoggerMessage(LogLevel.Information, "Circuit breaker '{Tag}' entered half-open state")]
     static partial void LogCircuitHalfOpened(ILogger<TService> logger, string tag);
 
     private void LogCircuitBreakerOpen(string circuitKey, Exception ex)
     {
         if (Logger != null && ActionDescription != null)
         {
-            LogCircuitBreakerOpen(Logger, circuitKey, ActionDescription, ex);
+            LogCircuitBreakerOpen(Logger, circuitKey, ActionDescription.ToLowerInvariant(), ex);
         }
     }
 
-    private void LogExecutingFallbackAction()
+    private void LogExecutingFallbackAction(string circuitKey)
     {
-        if (Logger != null && ActionDescription != null)
+        if (Logger != null)
         {
-            LogExecutingFallbackAction(Logger, ActionDescription);
+            LogExecutingFallbackAction(Logger, circuitKey);
         }
     }
 
-    private void LogCircuitBreakerOperationEncounteredHandledFailure(Exception ex)
+    private void LogCircuitBreakerOperationEncounteredHandledFailure(string circuitKey, Exception ex)
     {
-        if (Logger != null && ActionDescription != null)
+        if (Logger != null)
         {
-            LogCircuitBreakerOperationEncounteredHandledFailure(Logger, ActionDescription, ex);
+            LogCircuitBreakerOperationEncounteredHandledFailure(Logger, circuitKey, ex);
         }
     }
 

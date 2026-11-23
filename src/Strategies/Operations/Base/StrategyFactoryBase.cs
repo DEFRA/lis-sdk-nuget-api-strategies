@@ -32,6 +32,30 @@ public abstract class StrategyFactoryBase<TService, TParent> : IStrategyFactory<
         return GetParentFactory();
     }
 
+    public TParent When(bool condition, Action<TParent> configure, Action<TParent>? configureElse = null)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        if (condition)
+        {
+            configure(GetParentFactory());
+        }
+        else
+        {
+            configureElse?.Invoke(GetParentFactory());
+        }
+
+        return GetParentFactory();
+    }
+
+    public TParent When(Func<bool> predicate, Action<TParent> configure, Action<TParent>? configureElse = null)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        return When(predicate(), configure, configureElse);
+    }
+
     protected void AttachDefaultsToBuilder<TParentBuilder>(IStrategy<TService, TParentBuilder> strategyBuilder)
         where TParentBuilder : class
     {

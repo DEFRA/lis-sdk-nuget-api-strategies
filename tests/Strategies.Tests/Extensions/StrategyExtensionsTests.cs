@@ -1,4 +1,4 @@
-﻿// <copyright file="FluentValidationExtensionsTests.cs" company="Defra">
+﻿// <copyright file="StrategyExtensionsTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

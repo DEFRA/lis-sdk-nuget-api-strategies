@@ -1,4 +1,4 @@
-﻿// <copyright file="RestSerializerTests.cs" company="Defra">
+// <copyright file="RestSerializerTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -125,13 +125,13 @@ public class RestSerializerTests
         ex.InnerException.ShouldNotBeNull();
     }
 
-    private class UnserializableObject
+    private sealed class UnserializableObject
     {
         [JsonConverter(typeof(ThrowingConverter))]
         public string? Value { get; set; }
     }
 
-    private class ThrowingConverter : JsonConverter<string>
+    private sealed class ThrowingConverter : JsonConverter<string>
     {
         public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
             throw new NotSupportedException("Deserialization failed intentionally");

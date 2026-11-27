@@ -1,4 +1,4 @@
-﻿// <copyright file="OperatorContext.cs" company="Defra">
+// <copyright file="OperatorContext.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -20,7 +20,10 @@ public class OperatorContext : IOperatorContext
 
     public Operator Operator
     {
-        get => currentOperator ?? throw new InvalidOperationException(OperatorHasNotBeenSet);
+        get
+        {
+            return currentOperator ?? throw new InvalidOperationException(OperatorHasNotBeenSet);
+        }
 
         private set
         {

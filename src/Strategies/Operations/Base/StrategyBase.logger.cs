@@ -6,11 +6,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Base;
 
 using Microsoft.Extensions.Logging;
 
-/// <summary>
+/// <content>
 /// Logging operations for the strategy builder base class.
-/// </summary>
-/// <typeparam name="TService">The type of the service class that is consuming the derived builder.</typeparam>
-/// <typeparam name="TParent">The type of the derived builder.</typeparam>
+/// </content>
 public abstract partial class StrategyBase<TService, TParent>
 {
     [LoggerMessage(LogLevel.Information,

@@ -1,4 +1,4 @@
-﻿// <copyright file="ReferenceRulesBuilder.cs" company="Defra">
+// <copyright file="ReferenceRulesBuilder.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -12,6 +12,10 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
 using Microsoft.Extensions.Logging;
 
+/// <summary>
+/// Builds and evaluates reference rules for a request.
+/// </summary>
+/// <typeparam name="TService">The type of the service class that is consuming the builder.</typeparam>
 public partial class ReferenceRulesBuilder<TService> : IReferenceRulesBuilder<TService>
     where TService : class
 {

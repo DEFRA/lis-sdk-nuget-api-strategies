@@ -1,4 +1,4 @@
-﻿// <copyright file="MockRepoInterceptContextTests.cs" company="Defra">
+// <copyright file="MockRepoInterceptContextTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

@@ -1,4 +1,4 @@
-﻿// <copyright file="RestStrategy.cs" company="Defra">
+// <copyright file="RestStrategy.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -34,7 +34,8 @@ public sealed class RestStrategy<TService>
 
         WithJsonSerializerOptions(new JsonSerializerOptions
         {
-            PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         });
     }
 

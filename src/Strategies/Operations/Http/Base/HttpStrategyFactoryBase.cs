@@ -1,4 +1,4 @@
-﻿// <copyright file="HttpStrategyFactoryBase.cs" company="Defra">
+// <copyright file="HttpStrategyFactoryBase.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

@@ -1,4 +1,4 @@
-﻿// <copyright file="RestStrategyTests.cs" company="Defra">
+// <copyright file="RestStrategyTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -120,7 +120,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"Test\"}",
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"Test\"}",
             }));
 
         // Act
@@ -330,7 +332,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"John\"}",
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"John\"}",
             }));
 
         // Act
@@ -424,7 +428,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK, HasContent = false, Content = null,
+                StatusCode = HttpStatusCode.OK,
+                HasContent = false,
+                Content = null,
             }));
 
         // Act & Assert
@@ -446,7 +452,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"John\"}",
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"John\"}",
             }));
 
         // Act
@@ -472,7 +480,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.NoContent, HasContent = false, Content = null,
+                StatusCode = HttpStatusCode.NoContent,
+                HasContent = false,
+                Content = null,
             }));
 
         // Act
@@ -497,7 +507,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"John\"}",
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"John\"}",
             }));
 
         // Act
@@ -520,7 +532,9 @@ public class RestStrategyTests
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RestResponse
             {
-                StatusCode = HttpStatusCode.OK, HasContent = true, Content = "{\"id\":\"1\",\"name\":\"John\"}",
+                StatusCode = HttpStatusCode.OK,
+                HasContent = true,
+                Content = "{\"id\":\"1\",\"name\":\"John\"}",
             }));
 
         // Act

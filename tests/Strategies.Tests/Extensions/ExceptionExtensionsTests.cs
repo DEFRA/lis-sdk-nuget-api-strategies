@@ -1,4 +1,4 @@
-﻿// <copyright file="ExceptionExtensionsTests.cs" company="Defra">
+// <copyright file="ExceptionExtensionsTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

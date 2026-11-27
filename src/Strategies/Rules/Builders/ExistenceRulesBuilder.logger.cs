@@ -6,6 +6,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
 
 using Microsoft.Extensions.Logging;
 
+/// <content>
+/// Logging operations for the existence rules builder.
+/// </content>
 public partial class ExistenceRulesBuilder<TService, TEntity>
 {
     [LoggerMessage(LogLevel.Warning, "{EntityDescription} with id {Id} not found")]

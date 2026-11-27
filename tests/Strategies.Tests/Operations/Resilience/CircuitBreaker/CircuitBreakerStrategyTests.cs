@@ -1,4 +1,4 @@
-﻿// <copyright file="CircuitBreakerStrategyTests.cs" company="Defra">
+// <copyright file="CircuitBreakerStrategyTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -25,7 +25,7 @@ using Polly.Registry;
 using Shouldly;
 using Xunit;
 
-public class CircuitBreakerStrategyTests
+public sealed class CircuitBreakerStrategyTests : IDisposable
 {
     private readonly ResiliencePipelineRegistry<string> pipelineRegistry = new();
     private readonly ILogger<TestService> logger = Substitute.For<ILogger<TestService>>();
@@ -33,6 +33,11 @@ public class CircuitBreakerStrategyTests
     public CircuitBreakerStrategyTests()
     {
         logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+    }
+
+    public void Dispose()
+    {
+        pipelineRegistry.Dispose();
     }
 
     [Fact]

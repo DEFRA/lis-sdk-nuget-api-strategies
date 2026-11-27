@@ -1,4 +1,4 @@
-﻿// <copyright file="SoapSchemaBuilderTests.cs" company="Defra">
+// <copyright file="SoapSchemaBuilderTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

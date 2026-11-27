@@ -1,4 +1,4 @@
-﻿// <copyright file="ExistenceRulesBuilder.cs" company="Defra">
+// <copyright file="ExistenceRulesBuilder.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -11,6 +11,11 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders.Ancillary;
 using Microsoft.Extensions.Logging;
 
+/// <summary>
+/// Builds and evaluates existence rules for an entity.
+/// </summary>
+/// <typeparam name="TService">The type of the service class that is consuming the builder.</typeparam>
+/// <typeparam name="TEntity">The type of the entity the rules are evaluated against.</typeparam>
 public partial class ExistenceRulesBuilder<TService, TEntity> : IExistenceRulesBuilder<TService, TEntity>
     where TService : class
     where TEntity : class

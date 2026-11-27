@@ -1,4 +1,4 @@
-﻿// <copyright file="RestSerializer.cs" company="Defra">
+// <copyright file="RestSerializer.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -13,7 +13,8 @@ public static class RestSerializer
 
     private static readonly JsonSerializerOptions DefaultOptions = new()
     {
-        PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     public static string Serialize<T>(T @object, JsonSerializerOptions? options = null)

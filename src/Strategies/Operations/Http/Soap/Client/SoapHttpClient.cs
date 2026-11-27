@@ -57,7 +57,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
 
-        this.BaseUrl = baseUrl;
+        BaseUrl = baseUrl;
 
         return this;
     }
@@ -66,7 +66,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(soapAction);
 
-        this.SoapAction = soapAction;
+        SoapAction = soapAction;
 
         return this;
     }
@@ -75,7 +75,7 @@ public sealed partial class SoapHttpClient : ISoapHttpClient
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(mediaType);
 
-        this.MediaType = mediaType;
+        MediaType = mediaType;
 
         return this;
     }

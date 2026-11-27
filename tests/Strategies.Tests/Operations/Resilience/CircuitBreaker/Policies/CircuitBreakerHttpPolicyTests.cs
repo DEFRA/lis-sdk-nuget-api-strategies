@@ -1,4 +1,4 @@
-﻿// <copyright file="CircuitBreakerHttpPolicyTests.cs" company="Defra">
+// <copyright file="CircuitBreakerHttpPolicyTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -23,10 +23,15 @@ using Polly.Timeout;
 using Shouldly;
 using Xunit;
 
-public class CircuitBreakerHttpPolicyTests
+public sealed class CircuitBreakerHttpPolicyTests : IDisposable
 {
     private readonly ResiliencePipelineRegistry<string> pipelineRegistry = new();
     private readonly ILogger<TestService> logger = Substitute.For<ILogger<TestService>>();
+
+    public void Dispose()
+    {
+        pipelineRegistry.Dispose();
+    }
 
     [Fact]
     public void Execute_WhenCircuitBreakerStrategyIsNull_ThrowsArgumentNullException()

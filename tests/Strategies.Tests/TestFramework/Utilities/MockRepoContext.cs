@@ -1,9 +1,10 @@
-﻿// <copyright file="MockRepoContext.cs" company="Defra">
+// <copyright file="MockRepoContext.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
 namespace Defra.Livestock.Sdk.Api.Strategies.Tests.TestFramework.Utilities;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories;
 using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Repositories.Pagination;
@@ -27,6 +28,7 @@ public class MockRepoContext<TEntity>
 
     public MockRepoInterceptContext<TEntity> Calls { get; } = new();
 
+    [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Test fluent entry point used as MockRepoContext<TEntity>.CreateFor.")]
     public static MockRepoContext<TEntity> CreateFor(IRepoCapability repository)
     {
         return new MockRepoContext<TEntity>(repository);

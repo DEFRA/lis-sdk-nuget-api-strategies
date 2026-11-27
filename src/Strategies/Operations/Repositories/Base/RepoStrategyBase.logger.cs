@@ -6,11 +6,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Repositories.Base;
 
 using Microsoft.Extensions.Logging;
 
-/// <summary>
+/// <content>
 /// Logging operations for the repository strategy builder base class.
-/// </summary>
-/// <typeparam name="TService">The type of the service class that is consuming the derived builder.</typeparam>
-/// <typeparam name="TParent">The type of the derived builder.</typeparam>
+/// </content>
 public abstract partial class RepoStrategyBase<TService, TParent>
 {
     [LoggerMessage(LogLevel.Warning, "{targetDescription} with id {Id} not found")]

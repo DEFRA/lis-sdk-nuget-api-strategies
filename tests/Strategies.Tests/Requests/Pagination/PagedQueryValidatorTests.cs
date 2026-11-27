@@ -1,4 +1,4 @@
-﻿// <copyright file="PagedQueryValidatorTests.cs" company="Defra">
+// <copyright file="PagedQueryValidatorTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

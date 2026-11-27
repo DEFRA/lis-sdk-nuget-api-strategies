@@ -1,4 +1,4 @@
-﻿// <copyright file="EntityRulesBuilder.cs" company="Defra">
+// <copyright file="EntityRulesBuilder.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

@@ -1,4 +1,4 @@
-﻿// <copyright file="SoapSerializer.cs" company="Defra">
+// <copyright file="SoapSerializer.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

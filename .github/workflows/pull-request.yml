@@ -1,99 +1,81 @@
-name: "Pull Request"
+name: 'Pull Request Validation'
 
 on:
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened]
-    branches: ["*"]
-  push:
-    branches: ["main"]
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-  
+  group: pr-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   get-version:
-    name: "Calculate Version"
-    uses: ./.github/workflows/version.yml
-    with:
-      ref: ${{ github.head_ref || github.ref_name }}
-      build-number: ${{ github.run_number }}
+    name: 'Calculate Version'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Calculate version
+        id: version
+        uses: DEFRA/lis-github-actions/actions/version@5f5557f64c1344efb6ed44e482452f9cfe6bea51 # v0.11.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          branch: ${{ github.event.pull_request.head.ref }}
+          release-type: prerelease
 
-  create-tag:
-    name: "Create Git Tag"
+  build-test-pack:
+    name: 'Build test and pack'
     needs: get-version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Build, test and pack
+        uses: DEFRA/lis-github-actions/actions/build-test-dotnet@5f5557f64c1344efb6ed44e482452f9cfe6bea51 # v0.11.0
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Configure git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Create and push tag
-        uses: cake-build/cake-action@763b621ef69b317c1d6bde43a65f189c936b503b # master after v3.0.1: runs on node24 (unreleased)
-        with:
-          cake-version: 6.3.0
-          script-path: ./tag.cake
-          target: CreateTag
-          arguments: |
-            tag_version: ${{ needs.get-version.outputs.version }}
-
-  build-pack:
-    name: "Build, Test and Pack"
-    needs: get-version
-    uses: ./.github/workflows/build-pack.yml
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      ref: ${{ github.head_ref || github.ref_name }}
+          version: ${{ needs.get-version.outputs.version }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
   sonar-analysis:
-    name: "Sonar Analysis"
-    needs: [get-version, build-pack]
-    uses: ./.github/workflows/sonar.yml
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-      ref: ${{ github.head_ref || github.ref_name }}
-    secrets: inherit
-
-  publish-nuget:
-    name: "Publish to NuGet"
-    needs: [get-version, build-pack, sonar-analysis, create-tag]
-    if: needs.sonar-analysis.outputs.quality-gate-status == 'PASSED'
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/publish.yml
-    with:
-      version: ${{ needs.get-version.outputs.version }}
-    secrets: inherit
-
-  create-release:
-    name: "Create GitHub Release"
-    needs: [get-version, create-tag, sonar-analysis, publish-nuget]
-    if: needs.sonar-analysis.outputs.quality-gate-status == 'PASSED'
+    name: 'Sonar Analysis'
+    needs: get-version
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      quality-gate-status: ${{ steps.sonar.outputs.quality-gate-status }}
     steps:
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+      - name: Run Sonar analysis
+        id: sonar
+        uses: DEFRA/lis-github-actions/actions/sonar-dotnet@5f5557f64c1344efb6ed44e482452f9cfe6bea51 # v0.11.0
         with:
-          tag_name: ${{ needs.get-version.outputs.version }}
-          name: "v${{ needs.get-version.outputs.version }}"
-          generate_release_notes: true
+          version: ${{ needs.get-version.outputs.version }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          sonar-token: ${{ secrets.TMP_SONAR_TOKEN || secrets.LIS_SONAR_TOKEN }}
+
+  required-checks:
+    name: 'Pull Request Validation'
+    needs: [get-version, build-test-pack, sonar-analysis]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs succeeded
+        env:
+          GET_VERSION_RESULT: ${{ needs.get-version.result }}
+          BUILD_TEST_RESULT: ${{ needs.build-test-pack.result }}
+          SONAR_ANALYSIS_RESULT: ${{ needs.sonar-analysis.result }}
+        run: |
+          results=(
+            "get-version=$GET_VERSION_RESULT"
+            "build-test=$BUILD_TEST_RESULT"
+            "sonar-analysis=$SONAR_ANALYSIS_RESULT"
+          )
+
+          printf '%s\n' "${results[@]}"
+
+          for result in "${results[@]}"; do
+            if [[ "$result" != *=success ]]; then
+              echo "Required job did not succeed: $result" >&2
+              exit 1
+            fi
+          done

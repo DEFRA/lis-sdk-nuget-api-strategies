@@ -1,4 +1,4 @@
-﻿// <copyright file="RestHttpClient.logger.cs" company="Defra">
+// <copyright file="RestHttpClient.logger.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -6,9 +6,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Rest.Client;
 
 using Microsoft.Extensions.Logging;
 
-/// <summary>
+/// <content>
 /// Logging operations for the rest http client.
-/// </summary>
+/// </content>
 public sealed partial class RestHttpClient
 {
     [LoggerMessage(LogLevel.Information,

@@ -1,4 +1,4 @@
-﻿// <copyright file="ConflictRulesBuilder.cs" company="Defra">
+// <copyright file="ConflictRulesBuilder.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -11,7 +11,12 @@ using Defra.Livestock.Sdk.Api.Strategies.Abstractions.Rules.Builders;
 using Defra.Livestock.Sdk.Api.Strategies.Rules.Builders.Ancillary;
 using Microsoft.Extensions.Logging;
 
-public class ConflictRulesBuilder<TService, TEntity> : IConflictRulesBuilder<TService, TEntity>
+/// <summary>
+/// Builds and evaluates conflict rules for an entity.
+/// </summary>
+/// <typeparam name="TService">The type of the service class that is consuming the builder.</typeparam>
+/// <typeparam name="TEntity">The type of the entity the rules are evaluated against.</typeparam>
+public partial class ConflictRulesBuilder<TService, TEntity> : IConflictRulesBuilder<TService, TEntity>
     where TService : class
     where TEntity : class
 {
@@ -50,8 +55,8 @@ public class ConflictRulesBuilder<TService, TEntity> : IConflictRulesBuilder<TSe
                 continue;
             }
 
-            logger.LogWarning(
-                "Execute {ActionDescription} [{EntityDescription}] with id {Id} failed conflict rule '{Description}'",
+            LogFailedRule(
+                logger,
                 actionDescription.ToLowerInvariant(),
                 modelDescription.ToLowerInvariant(),
                 request.GetLoggableId(),

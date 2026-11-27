@@ -1,4 +1,4 @@
-﻿// <copyright file="TestHttpMessageHandler.cs" company="Defra">
+// <copyright file="TestHttpMessageHandler.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

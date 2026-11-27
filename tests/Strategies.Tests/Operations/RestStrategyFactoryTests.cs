@@ -1,4 +1,4 @@
-﻿// <copyright file="RestStrategyFactoryTests.cs" company="Defra">
+// <copyright file="RestStrategyFactoryTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

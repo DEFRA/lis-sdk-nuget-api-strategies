@@ -1,4 +1,4 @@
-﻿// <copyright file="ServiceCollectionExtensionsTests.cs" company="Defra">
+// <copyright file="ServiceCollectionExtensionsTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

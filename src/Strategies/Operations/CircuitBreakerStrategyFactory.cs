@@ -1,4 +1,4 @@
-﻿// <copyright file="CircuitBreakerStrategyFactory.cs" company="Defra">
+// <copyright file="CircuitBreakerStrategyFactory.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

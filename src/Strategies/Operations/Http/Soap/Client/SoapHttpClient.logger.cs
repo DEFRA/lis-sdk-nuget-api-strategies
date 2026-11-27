@@ -6,9 +6,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Http.Soap.Client;
 
 using Microsoft.Extensions.Logging;
 
-/// <summary>
+/// <content>
 /// Logging operations for the soap http client.
-/// </summary>
+/// </content>
 public sealed partial class SoapHttpClient
 {
     [LoggerMessage(LogLevel.Information,

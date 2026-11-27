@@ -54,12 +54,12 @@ public class StrategyBaseTests
 
         return;
 
-        Task BeforeAction() => Task.CompletedTask;
+        static Task BeforeAction() => Task.CompletedTask;
 
-        Task<RequestValidationResult> ValidateAction() =>
+        static Task<RequestValidationResult> ValidateAction() =>
             Task.FromResult(new RequestValidationResult(Array.Empty<RequestValidationFailure>()));
 
-        Task AfterAction() => Task.CompletedTask;
+        static Task AfterAction() => Task.CompletedTask;
     }
 
     [Fact]

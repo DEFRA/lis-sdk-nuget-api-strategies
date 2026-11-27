@@ -1,4 +1,4 @@
-﻿// <copyright file="CircuitBreakerStrategyFactoryTests.cs" company="Defra">
+// <copyright file="CircuitBreakerStrategyFactoryTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -18,7 +18,7 @@ using Polly.Registry;
 using Shouldly;
 using Xunit;
 
-public class CircuitBreakerStrategyFactoryTests
+public sealed class CircuitBreakerStrategyFactoryTests : IDisposable
 {
     private readonly IServiceProvider serviceProvider = Substitute.For<IServiceProvider>();
     private readonly ResiliencePipelineRegistry<string> pipelineRegistry = new();
@@ -28,6 +28,11 @@ public class CircuitBreakerStrategyFactoryTests
     public CircuitBreakerStrategyFactoryTests()
     {
         serviceProvider.GetService(typeof(ResiliencePipelineRegistry<string>)).Returns(pipelineRegistry);
+    }
+
+    public void Dispose()
+    {
+        pipelineRegistry.Dispose();
     }
 
     [Fact]

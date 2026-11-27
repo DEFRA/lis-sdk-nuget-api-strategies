@@ -1,4 +1,4 @@
-﻿// <copyright file="CircuitBreakerStrategy.logger.cs" company="Defra">
+// <copyright file="CircuitBreakerStrategy.logger.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -7,10 +7,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Operations.Resilience.CircuitBreake
 using System;
 using Microsoft.Extensions.Logging;
 
-/// <summary>
+/// <content>
 /// Logging operations for the circuit breaker strategy builder class.
-/// </summary>
-/// <typeparam name="TService">The type of the service class that is consuming the derived builder.</typeparam>
+/// </content>
 public sealed partial class CircuitBreakerStrategy<TService>
 {
     [LoggerMessage(LogLevel.Warning, "Circuit breaker '{CircuitKey}' is open for action '{ActionDescription}'")]

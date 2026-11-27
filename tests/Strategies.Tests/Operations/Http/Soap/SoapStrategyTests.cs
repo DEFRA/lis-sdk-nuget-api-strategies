@@ -1,4 +1,4 @@
-﻿// <copyright file="SoapStrategyTests.cs" company="Defra">
+// <copyright file="SoapStrategyTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

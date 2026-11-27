@@ -1,25 +1,32 @@
-﻿# Defra Livestock API SDK (NuGet)
-**Root Namespace**: *Defra.Livestock.Sdk.Api*
+# lis-sdk-nuget-api-strategies
 
----
+Part of the Livestock Information Service (LIS), which lets livestock keepers, owners, agents and
+delegates record and manage their animals.
 
-## Strategies
+`Defra.Livestock.Sdk.Api.Strategies` is a shared NuGet package that implements the contracts in [`Defra.Livestock.Sdk.Api.Strategies.Abstractions`](https://github.com/DEFRA/lis-sdk-nuget-api-strategies-abs). It provides fluent strategy builders, factories and associated components for executing business logic and operations across:
 
-**Namespace**: *Defra.Livestock.Sdk.Api.Strategies*
+- **Repository interactions**: create, get, get-list, get-paged, update and upsert
+- **SOAP API interactions**: XML/SOAP payloads, XSD schema validation and transformations
+- **REST API interactions**: HTTP methods, resource URLs, query parameters, JSON payloads and transformations
+- **Circuit breaker resilience**: consecutive failure counts, failure ratio, sampling window, minimum throughput, half-open probing and fallback
 
-This package provides fluent strategy builders, factories, and associated components for executing business logic and operations across:
-- **Repository Interactions** (Create, Get, GetList, GetPaged, Update, Upsert)
-- **SOAP API Interactions** (XML/SOAP payloads, XSD schema validations, transformations)
-- **REST API Interactions** (HTTP methods, resource URLs, query parameters, JSON payloads, transformations)
-- **Circuit Breaker Resilience** (Consecutive failure counts, failure ratio, sampling window, minimum throughput, half-open probing, fallback)
+Used by: LIS .NET services that execute repository, REST, SOAP or resilient operations through strategies.
 
----
+## Installation
 
-## Service Collection Extensions (Dependency Injection)
+```bash
+dotnet add package Defra.Livestock.Sdk.Api.Strategies
+```
+
+The project produces the `Defra.Livestock.Sdk.Api.Strategies` package and targets `net10.0`. Its runtime dependencies are `Defra.Livestock.Sdk.Api.Strategies.Abstractions`, `FluentValidation`, `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Http`, `Microsoft.Extensions.Logging.Abstractions`, `Microsoft.Extensions.Options` and `Polly.Core`. Publishing is configured in the [tag-triggered workflow](https://github.com/DEFRA/lis-sdk-nuget-api-strategies/blob/main/.github/workflows/publish.yml) and [composite NuGet action](https://github.com/DEFRA/lis-github-actions/blob/5f5557f64c1344efb6ed44e482452f9cfe6bea51/actions/publish-nuget/action.yml).
+
+## Usage
+
+### Service Collection Extensions (Dependency Injection)
 
 Register the framework and factory dependencies in your `IServiceCollection` (e.g. within `Program.cs` or `Startup.cs`).
 
-### Framework Registration
+#### Framework Registration
 
 ```csharp
 using Defra.Livestock.Sdk.Api.Strategies;
@@ -38,7 +45,7 @@ services.AddCircuitBreakerPolicyFactory();
 
 ---
 
-### Strategy Factory Registration Methods & Overloads
+#### Strategy Factory Registration Methods & Overloads
 
 Strategy factories can be registered directly with parameterless methods or pre-configured with defaults during DI registration using delegates.
 
@@ -60,7 +67,7 @@ Strategy factories can be registered directly with parameterless methods or pre-
 
 ---
 
-### `StrategyFactoryRegistrationContext<TService>`
+#### `StrategyFactoryRegistrationContext<TService>`
 
 When using registration overloads with a `configure` delegate, an instance of `StrategyFactoryRegistrationContext<TService>` is passed. It provides access to scoped/transient services resolved from the current service scope:
 
@@ -70,9 +77,9 @@ When using registration overloads with a `configure` delegate, an instance of `S
 
 ---
 
-### DI Registration Usage Examples
+#### DI Registration Usage Examples
 
-#### 1. Parameterless Registration
+##### 1. Parameterless Registration
 
 Use when factories will be configured in service constructors or strategy builders:
 
@@ -83,7 +90,7 @@ services.AddRestStrategyFactory<ExternalRestService>();
 services.AddCircuitBreakerStrategyFactory<ExternalRestService>();
 ```
 
-#### 2. Registration with `StrategyFactoryRegistrationContext`
+##### 2. Registration with `StrategyFactoryRegistrationContext`
 
 Use to configure default factory settings (including logger, operator context, base URLs, timeouts, headers) at DI registration time:
 
@@ -122,7 +129,7 @@ services.AddRepoStrategyFactory<CustomerRepositoryService>((factory, context) =>
 });
 ```
 
-#### 3. Options Pattern Registration (`<TService, TOptions>`)
+##### 3. Options Pattern Registration (`<TService, TOptions>`)
 
 Use when defaults are defined in `appsettings.json` and bound to strongly-typed options models:
 
@@ -151,7 +158,7 @@ services.AddRestStrategyFactory<LivestockService, LivestockApiOptions>((factory,
 });
 ```
 
-#### 4. Circuit Breaker Factory Registration with Policy Factory
+##### 4. Circuit Breaker Factory Registration with Policy Factory
 
 Use `ICircuitBreakerPolicyFactory` to apply reusable resilience policies (e.g., HTTP policy) during DI registration:
 
@@ -197,18 +204,18 @@ services.AddCircuitBreakerStrategyFactory<PaymentIntegrationService, ResilienceO
 
 ---
 
-## Strategy Factories & Default Configuration
+### Strategy Factories & Default Configuration
 
 Each factory can be injected into your service and pre-configured with default values (such as loggers, operator context, base URLs, headers, entity descriptions, etc.) that will automatically propagate to all strategy instances created by that factory.
 
-### Common Strategy Factory Methods (`StrategyFactoryBase<TService, TFactory>`)
+#### Common Strategy Factory Methods (`StrategyFactoryBase<TService, TFactory>`)
 
 - `WithDefaultLogger(ILogger<TService> logger)` - Sets the default logger for all strategies built by this factory.
 - `WithDefaultOperatorContext(IOperatorContext operatorContext)` - Sets the default operator context for user authorization / auditing.
 - `When(bool condition, Action<TFactory> configure, Action<TFactory>? configureElse = null)` - Conditionally executes configuration on the factory if the condition is `true` (and optional `configureElse` when `false`).
 - `When(Func<bool> predicate, Action<TFactory> configure, Action<TFactory>? configureElse = null)` - Conditionally executes configuration on the factory if the predicate evaluates to `true` (and optional `configureElse` when `false`).
 
-### Common HTTP Strategy Factory Methods (`HttpStrategyFactoryBase<TService, TFactory>`)
+#### Common HTTP Strategy Factory Methods (`HttpStrategyFactoryBase<TService, TFactory>`)
 
 Shared by `SoapStrategyFactory` and `RestStrategyFactory`:
 - `WithDefaultApiDescription(string entityDescription)` - Sets default API description.
@@ -222,9 +229,9 @@ Shared by `SoapStrategyFactory` and `RestStrategyFactory`:
 
 ---
 
-## 1. Repository Strategies (`IRepoStrategyFactory<TService>`)
+### 1. Repository Strategies (`IRepoStrategyFactory<TService>`)
 
-### Registering and Injecting Repo Strategy Factory
+#### Registering and Injecting Repo Strategy Factory
 
 ```csharp
 public class AnimalService
@@ -247,10 +254,10 @@ public class AnimalService
 }
 ```
 
-### Factory Defaults for Repository Strategies
+#### Factory Defaults for Repository Strategies
 - `WithDefaultEntityDescription(string entityDescription)` - Sets default entity description used in logging.
 
-### Repository Strategy Builders
+#### Repository Strategy Builders
 
 The factory provides builder creation methods:
 - `BuildCreateStrategy<TEntity>()` -> `ICreateRepoStrategy<TService, TEntity>`
@@ -262,7 +269,7 @@ The factory provides builder creation methods:
 
 ---
 
-### Common Strategy Fluent Methods (`StrategyBase`)
+#### Common Strategy Fluent Methods (`StrategyBase`)
 
 All strategy builders inherit the following fluent configuration methods:
 
@@ -283,13 +290,13 @@ All strategy builders inherit the following fluent configuration methods:
 
 ---
 
-### FluentValidation Integration (`StrategyExtensions`)
+#### FluentValidation Integration (`StrategyExtensions`)
 
 The package includes `StrategyExtensions` (in namespace `Defra.Livestock.Sdk.Api.Strategies.Operations`) providing first-class integration with [FluentValidation](https://docs.fluentvalidation.net/):
 
 - `WithRequestValidation(Func<Task<ValidationResult>> validateAction)` - Extension method available on all strategies (`IStrategy<TService, TParent>`) accepting a delegate returning FluentValidation's `ValidationResult`.
 
-#### How it works:
+##### How it works:
 1. Executes your FluentValidation validator asynchronously.
 2. Automatically maps `FluentValidation.Results.ValidationResult` to internal `RequestValidationResult`.
 3. Converts all `ValidationFailure` items to `RequestValidationFailure`, preserving:
@@ -300,7 +307,7 @@ The package includes `StrategyExtensions` (in namespace `Defra.Livestock.Sdk.Api
    - `RuleSetsExecuted`
 4. If validation fails (`IsValid == false`), execution halts and throws a `RequestValidationException` containing the detailed failure collection before any downstream operation logic runs.
 
-#### Example:
+##### Example:
 ```csharp
 using Defra.Livestock.Sdk.Api.Strategies.Operations; // Required for StrategyExtensions
 using FluentValidation;
@@ -336,11 +343,11 @@ public class CreateAnimalHandler
 
 ---
 
-### Create Repo Strategy (`ICreateRepoStrategy<TService, TEntity>`)
+#### Create Repo Strategy (`ICreateRepoStrategy<TService, TEntity>`)
 
 Used to insert new records into a repository (`IRepoCreatable<TEntity>`).
 
-#### Fluent Methods:
+##### Fluent Methods:
 - `WithRepository(IRepoCreatable<TEntity> repository)` - Specifies the repository.
 - `WithCreate(Func<TEntity> createAction)` - Specifies the factory function producing the entity to create.
 - `WithReferenceRules(Action<IReferenceRulesBuilder<TEntity>> rulesAction)` - Configures reference integrity validation rules prior to creation.
@@ -348,9 +355,9 @@ Used to insert new records into a repository (`IRepoCreatable<TEntity>`).
 - `Execute()` - Executes creation and returns the created `TEntity`.
 - `ExecuteAndMap<TResult>(Func<TEntity, TResult> map)` - Executes creation and maps `TEntity` to `TResult`.
 
-#### Examples:
+##### Examples:
 
-##### Using `ExecuteAndMap` (Returns Mapped Result):
+###### Using `ExecuteAndMap` (Returns Mapped Result):
 ```csharp
 var animalDto = await _strategyFactory.BuildCreateStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -366,7 +373,7 @@ var animalDto = await _strategyFactory.BuildCreateStrategy<Animal>()
     .ExecuteAndMap(entity => new AnimalDto { Id = entity.Id, Name = entity.Name });
 ```
 
-##### Using `Execute` (Returns Created Entity Directly):
+###### Using `Execute` (Returns Created Entity Directly):
 ```csharp
 Animal createdAnimal = await _strategyFactory.BuildCreateStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -378,11 +385,11 @@ Animal createdAnimal = await _strategyFactory.BuildCreateStrategy<Animal>()
 
 ---
 
-### Get Repo Strategy (`IGetRepoStrategy<TService, TEntity>`)
+#### Get Repo Strategy (`IGetRepoStrategy<TService, TEntity>`)
 
 Used to retrieve a single entity from a repository (`IRepoGettable<TEntity>`).
 
-#### Fluent Methods:
+##### Fluent Methods:
 - `WithRepository<TRepository>(TRepository repository)` - Specifies the repository implementing `IRepoGettable<TEntity>`.
 - `WithRequest(ILoggableById request)` - Associates a request object with an `Id` for structured logging.
 - `WithEntityFilter(Expression<Func<TEntity, bool>> entityFilter)` - Filter predicate expression to find the entity.
@@ -390,9 +397,9 @@ Used to retrieve a single entity from a repository (`IRepoGettable<TEntity>`).
 - `Execute()` - Executes retrieval and returns the `TEntity`.
 - `ExecuteAndMap<TResult>(Func<TEntity, TResult> map)` - Executes retrieval and maps `TEntity` to `TResult`.
 
-#### Examples:
+##### Examples:
 
-##### Using `ExecuteAndMap` (Returns Mapped Result):
+###### Using `ExecuteAndMap` (Returns Mapped Result):
 ```csharp
 var animalDto = await _strategyFactory.BuildGetStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -406,7 +413,7 @@ var animalDto = await _strategyFactory.BuildGetStrategy<Animal>()
     .ExecuteAndMap(a => _mapper.Map<AnimalDto>(a));
 ```
 
-##### Using `Execute` (Returns Entity Directly):
+###### Using `Execute` (Returns Entity Directly):
 ```csharp
 Animal animal = await _strategyFactory.BuildGetStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -418,20 +425,20 @@ Animal animal = await _strategyFactory.BuildGetStrategy<Animal>()
 
 ---
 
-### Get List Repo Strategy (`IGetListRepoStrategy<TService, TEntity>`)
+#### Get List Repo Strategy (`IGetListRepoStrategy<TService, TEntity>`)
 
 Used to query a list of entities from a repository (`IRepoListable<TEntity>`).
 
-#### Fluent Methods:
+##### Fluent Methods:
 - `WithRepository<TRepository>(TRepository repository)` - Specifies the repository implementing `IRepoListable<TEntity>`.
 - `WithEntityFilter(Expression<Func<TEntity, bool>> entityFilter)` - Filter predicate expression.
 - `Execute()` - Executes query and returns `List<TEntity>`.
 - `ExecuteAndMap<TResult>(Func<TEntity, TResult> map)` - Executes query and maps each entity in the list to `List<TResult>`.
 - `ExecuteAndTransform<TResult>(Func<List<TEntity>, TResult> transform)` - Executes query and transforms the full entity list to `TResult`.
 
-#### Examples:
+##### Examples:
 
-##### Using `ExecuteAndMap` (Maps Each Entity to a Result List):
+###### Using `ExecuteAndMap` (Maps Each Entity to a Result List):
 ```csharp
 List<AnimalDto> animalDtos = await _strategyFactory.BuildGetListStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -441,7 +448,7 @@ List<AnimalDto> animalDtos = await _strategyFactory.BuildGetListStrategy<Animal>
     .ExecuteAndMap(a => _mapper.Map<AnimalDto>(a));
 ```
 
-##### Using `Execute` (Returns Entity List Directly):
+###### Using `Execute` (Returns Entity List Directly):
 ```csharp
 List<Animal> animals = await _strategyFactory.BuildGetListStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -451,7 +458,7 @@ List<Animal> animals = await _strategyFactory.BuildGetListStrategy<Animal>()
     .Execute();
 ```
 
-##### Using `ExecuteAndTransform` (Transforms Entire Entity List):
+###### Using `ExecuteAndTransform` (Transforms Entire Entity List):
 ```csharp
 HerdSummaryDto summary = await _strategyFactory.BuildGetListStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -468,11 +475,11 @@ HerdSummaryDto summary = await _strategyFactory.BuildGetListStrategy<Animal>()
 
 ---
 
-### Get Paged Repo Strategy (`IGetPagedRepoStrategy<TService, TEntity>`)
+#### Get Paged Repo Strategy (`IGetPagedRepoStrategy<TService, TEntity>`)
 
 Used to retrieve paged records from a repository (`IRepoPageable<TEntity>`).
 
-#### Fluent Methods:
+##### Fluent Methods:
 - `WithRepository<TRepository>(TRepository repository)` - Specifies the repository implementing `IRepoPageable<TEntity>`.
 - `WithRequest<TRequest>(TRequest request)` - Associates request object implementing `IPagedQuery` and `ILoggableById`.
 - `WithEntityFilter(Expression<Func<TEntity, bool>> entityFilter)` - Optional filter predicate expression.
@@ -480,9 +487,9 @@ Used to retrieve paged records from a repository (`IRepoPageable<TEntity>`).
 - `ExecuteAndMap<TResult, TOrderBy>(Expression<Func<TEntity, TOrderBy>> orderBy, Func<TEntity, TResult> map, bool isAscending = true)` - Executes query and maps paged items to `PagedResults<TResult>`.
 - `ExecuteAndTransform<TResult, TOrderBy>(Expression<Func<TEntity, TOrderBy>> orderBy, Func<PagedEntities<TEntity>, TResult> transform, bool isAscending = true)` - Executes query and transforms `PagedEntities<TEntity>` to `TResult`.
 
-#### Examples:
+##### Examples:
 
-##### Using `ExecuteAndMap` (Maps Paged Entities to Paged DTOs):
+###### Using `ExecuteAndMap` (Maps Paged Entities to Paged DTOs):
 ```csharp
 PagedResults<AnimalDto> pagedResult = await _strategyFactory.BuildGetPagedStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -493,7 +500,7 @@ PagedResults<AnimalDto> pagedResult = await _strategyFactory.BuildGetPagedStrate
     .ExecuteAndMap(a => a.Name, a => _mapper.Map<AnimalDto>(a), isAscending: true);
 ```
 
-##### Using `Execute` (Returns PagedEntities Directly):
+###### Using `Execute` (Returns PagedEntities Directly):
 ```csharp
 PagedEntities<Animal> pagedEntities = await _strategyFactory.BuildGetPagedStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -504,7 +511,7 @@ PagedEntities<Animal> pagedEntities = await _strategyFactory.BuildGetPagedStrate
     .Execute(a => a.Name, isAscending: true);
 ```
 
-##### Using `ExecuteAndTransform` (Transforms PagedEntities to Custom Model):
+###### Using `ExecuteAndTransform` (Transforms PagedEntities to Custom Model):
 ```csharp
 CustomPagedResponse<AnimalDto> customPagedResponse = await _strategyFactory.BuildGetPagedStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -523,11 +530,11 @@ CustomPagedResponse<AnimalDto> customPagedResponse = await _strategyFactory.Buil
 
 ---
 
-### Update Repo Strategy (`IUpdateRepoStrategy<TService, TEntity>`)
+#### Update Repo Strategy (`IUpdateRepoStrategy<TService, TEntity>`)
 
 Used to update existing records in a repository (`IRepoGettable<TEntity>` & `IRepoUpdatable<TEntity>`).
 
-#### Fluent Methods:
+##### Fluent Methods:
 - `WithRepository<TRepository>(TRepository repository)` - Specifies repository implementing `IRepoGettable<TEntity>` and `IRepoUpdatable<TEntity>`.
 - `WithRequest(ILoggableById request)` - Associates a request object with an `Id` for structured logging.
 - `WithEntityFilter(Expression<Func<TEntity, bool>> entityFilter)` - Predicate to find target entity.
@@ -541,9 +548,9 @@ Used to update existing records in a repository (`IRepoGettable<TEntity>` & `IRe
 - `Execute()` - Executes update and returns updated `TEntity`.
 - `ExecuteAndMap<TResult>(Func<TEntity, TResult> map)` - Executes update and maps `TEntity` to `TResult`.
 
-#### Examples:
+##### Examples:
 
-##### Using `ExecuteAndMap` (Returns Mapped Result):
+###### Using `ExecuteAndMap` (Returns Mapped Result):
 ```csharp
 var animalDto = await _strategyFactory.BuildUpdateStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -562,7 +569,7 @@ var animalDto = await _strategyFactory.BuildUpdateStrategy<Animal>()
     .ExecuteAndMap(a => _mapper.Map<AnimalDto>(a));
 ```
 
-##### Using `Execute` (Returns Updated Entity Directly):
+###### Using `Execute` (Returns Updated Entity Directly):
 ```csharp
 Animal updatedAnimal = await _strategyFactory.BuildUpdateStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -580,11 +587,11 @@ Animal updatedAnimal = await _strategyFactory.BuildUpdateStrategy<Animal>()
 
 ---
 
-### Upsert Repo Strategy (`IUpsertRepoStrategy<TService, TEntity>`)
+#### Upsert Repo Strategy (`IUpsertRepoStrategy<TService, TEntity>`)
 
 Used to insert a new entity or update an existing entity in a repository (`IRepoGettable<TEntity>`, `IRepoCreatable<TEntity>`, `IRepoUpdatable<TEntity>`).
 
-#### Fluent Methods:
+##### Fluent Methods:
 - `WithRepository<TRepository>(TRepository repository)` - Repository implementing `IRepoGettable<TEntity>`, `IRepoCreatable<TEntity>`, and `IRepoUpdatable<TEntity>`.
 - `WithRequest(ILoggableById request)` - Associates a request object with an `Id` for structured logging.
 - `WithEntityFilter(Expression<Func<TEntity, bool>> entityFilter)` - Predicate to check if entity already exists.
@@ -599,9 +606,9 @@ Used to insert a new entity or update an existing entity in a repository (`IRepo
 - `Execute()` - Executes upsert and returns the created or updated `TEntity`.
 - `ExecuteAndMap<TResult>(Func<TEntity, TResult> map)` - Executes upsert and maps result to `TResult`.
 
-#### Examples:
+##### Examples:
 
-##### Using `ExecuteAndMap` (Returns Mapped Result):
+###### Using `ExecuteAndMap` (Returns Mapped Result):
 ```csharp
 var animalDto = await _strategyFactory.BuildUpsertStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -614,7 +621,7 @@ var animalDto = await _strategyFactory.BuildUpsertStrategy<Animal>()
     .ExecuteAndMap(a => _mapper.Map<AnimalDto>(a));
 ```
 
-##### Using `Execute` (Returns Created or Updated Entity Directly):
+###### Using `Execute` (Returns Created or Updated Entity Directly):
 ```csharp
 Animal animal = await _strategyFactory.BuildUpsertStrategy<Animal>()
     .WithCancellationToken(cancellationToken)
@@ -629,9 +636,9 @@ Animal animal = await _strategyFactory.BuildUpsertStrategy<Animal>()
 
 ---
 
-## 2. SOAP Strategy (`ISoapStrategyFactory<TService>`)
+### 2. SOAP Strategy (`ISoapStrategyFactory<TService>`)
 
-### Registering and Injecting SOAP Strategy Factory
+#### Registering and Injecting SOAP Strategy Factory
 
 ```csharp
 public class ExternalSoapService
@@ -657,7 +664,7 @@ public class ExternalSoapService
 }
 ```
 
-### Factory Defaults for SOAP Strategies
+#### Factory Defaults for SOAP Strategies
 - `WithDefaultApiDescription(string entityDescription)` - Sets default API description for logging.
 - `WithDefaultBaseUrl(string baseUrl)` - Sets default base URL.
 - `WithDefaultServiceUrl(string serviceUrl)` - Sets default service URL / relative path.
@@ -670,11 +677,11 @@ public class ExternalSoapService
 - `WithDefaultXmlDeclaration(bool withDefaultXmlDeclaration)` - Sets whether to include the XML declaration.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for payload/response logging.
 
-### SOAP Strategy Fluent Methods (`ISoapStrategy<TService>`)
+#### SOAP Strategy Fluent Methods (`ISoapStrategy<TService>`)
 
 Created via `_soapFactory.BuildSoapStrategy()`.
 
-#### HTTP & SOAP Configuration:
+##### HTTP & SOAP Configuration:
 - `WithBaseUrl(string baseUrl)` - Sets the base URL.
 - `WithServiceUrl(string serviceUrl)` - Sets the service URL / relative endpoint.
 - `WithSoapAction(string soapAction)` - Sets the `SOAPAction` header.
@@ -688,18 +695,18 @@ Created via `_soapFactory.BuildSoapStrategy()`.
 - `WithApiDescription(string apiDescription)` - Sets the descriptive API name for logging.
 - `WithVerboseOutput(Action<string, string?> verboseOutputAction)` - Registers a callback to receive verbose debug output (raw and transformed request/response XML).
 
-#### Payload Configuration:
+##### Payload Configuration:
 - `WithPayload(Func<XElement> payloadAction)` - Sets raw `XElement` SOAP payload factory.
 - `WithPayload<TRequest>(TRequest payload)` - Serializes strongly-typed model into XML payload.
 - `WithPayload<TRequest>(Func<TRequest> payloadAction)` - Serializes result from a model factory function into XML payload.
 - `WithPayloadTransformer(Func<XElement?, XElement?> payloadTransformerAction)` - Delegate to modify / transform XML payload before sending.
 
-#### Validation & Schema Checking:
+##### Validation & Schema Checking:
 - `WithSchemas(Action<ISoapSchemaBuilder> builder)` - Registers XSD schemas from file system or embedded assembly resources.
 - `WithValidatePreTransformPayloadSchema(string? targetElementName = null)` - Validates payload XML against registered schemas prior to executing payload transformation.
 - `WithValidatePayloadSchema(string? targetElementName = null)` - Validates final payload XML against registered schemas prior to sending. Throws `XmlSchemaValidationException` if invalid.
 
-#### Response Transformation & Execution:
+##### Response Transformation & Execution:
 - `WithResponseTransformer(Func<XElement?, XElement?> responseTransformerAction)` - Delegate to transform / extract response XML before deserialization.
 - `Execute()` - Executes the SOAP request and returns the response body as an `XElement`.
 - `Execute<TResult>()` - Executes the request and deserializes the response body XML into `TResult`.
@@ -708,9 +715,9 @@ Created via `_soapFactory.BuildSoapStrategy()`.
 - `ExecuteAndTransform<TResponse, TResult>(Func<TResponse, Func<XElement, TResult>, TResult> transform)` - Deserializes response body to `TResponse` with a fallback XML deserializer function.
 - `ExecuteWithoutResponse()` - Executes the request where no response content is expected.
 
-#### Examples:
+##### Examples:
 
-##### Using `Execute<TResult>` (Deserializes XML Response into Strongly-Typed Result):
+###### Using `Execute<TResult>` (Deserializes XML Response into Strongly-Typed Result):
 ```csharp
 AnimalStatusResponseDto responseDto = await _soapFactory.BuildSoapStrategy()
     .WithCancellationToken(cancellationToken)
@@ -728,7 +735,7 @@ AnimalStatusResponseDto responseDto = await _soapFactory.BuildSoapStrategy()
     .Execute<AnimalStatusResponseDto>();
 ```
 
-##### Using `Execute` (Returns Raw Response XML as `XElement`):
+###### Using `Execute` (Returns Raw Response XML as `XElement`):
 ```csharp
 XElement responseXml = await _soapFactory.BuildSoapStrategy()
     .WithCancellationToken(cancellationToken)
@@ -740,7 +747,7 @@ XElement responseXml = await _soapFactory.BuildSoapStrategy()
     .Execute();
 ```
 
-##### Using `ExecuteAndTransform` with `XElement` (Custom XML Parsing/Extraction):
+###### Using `ExecuteAndTransform` with `XElement` (Custom XML Parsing/Extraction):
 ```csharp
 string status = await _soapFactory.BuildSoapStrategy()
     .WithCancellationToken(cancellationToken)
@@ -752,7 +759,7 @@ string status = await _soapFactory.BuildSoapStrategy()
     .ExecuteAndTransform(xml => xml.Descendants().First(e => e.Name.LocalName == "StatusCode").Value);
 ```
 
-##### Using `ExecuteAndTransform` with `TResponse` (Deserializes to Intermediate Model and Maps to DTO):
+###### Using `ExecuteAndTransform` with `TResponse` (Deserializes to Intermediate Model and Maps to DTO):
 ```csharp
 AnimalSummaryDto summary = await _soapFactory.BuildSoapStrategy()
     .WithCancellationToken(cancellationToken)
@@ -768,7 +775,7 @@ AnimalSummaryDto summary = await _soapFactory.BuildSoapStrategy()
     });
 ```
 
-##### Using `ExecuteWithoutResponse` (For One-Way / Void Operations):
+###### Using `ExecuteWithoutResponse` (For One-Way / Void Operations):
 ```csharp
 await _soapFactory.BuildSoapStrategy()
     .WithCancellationToken(cancellationToken)
@@ -782,9 +789,9 @@ await _soapFactory.BuildSoapStrategy()
 
 ---
 
-## 3. REST Strategy (`IRestStrategyFactory<TService>`)
+### 3. REST Strategy (`IRestStrategyFactory<TService>`)
 
-### Registering and Injecting REST Strategy Factory
+#### Registering and Injecting REST Strategy Factory
 
 ```csharp
 public class ExternalRestService
@@ -813,7 +820,7 @@ public class ExternalRestService
 }
 ```
 
-### Factory Defaults for REST Strategies
+#### Factory Defaults for REST Strategies
 - `WithDefaultApiDescription(string entityDescription)` - Sets default API description.
 - `WithDefaultBaseUrl(string baseUrl)` - Sets default base URL.
 - `WithDefaultResourceUrl(string resourceUrl)` - Sets default resource URL / relative path.
@@ -825,11 +832,11 @@ public class ExternalRestService
 - `WithDefaultJsonSerializerOptions(JsonSerializerOptions jsonSerializerOptions)` - Sets default JSON serialization options.
 - `WithDefaultVerboseOutput(Action<string, string?> verboseOutputAction)` - Sets default verbose output handler for request/response logging.
 
-### REST Strategy Fluent Methods (`IRestStrategy<TService>`)
+#### REST Strategy Fluent Methods (`IRestStrategy<TService>`)
 
 Created via `_restFactory.BuildRestStrategy()`.
 
-#### HTTP Request Configuration:
+##### HTTP Request Configuration:
 - `WithGet()` - Sets HTTP method to `GET`.
 - `WithPost()` - Sets HTTP method to `POST`.
 - `WithPut()` - Sets HTTP method to `PUT`.
@@ -852,18 +859,18 @@ Created via `_restFactory.BuildRestStrategy()`.
 - `WithJsonSerializerOptions(JsonSerializerOptions jsonSerializerOptions)` - Custom JSON serializer options.
 - `WithVerboseOutput(Action<string, string?> verboseOutputAction)` - Registers a callback to receive verbose debug output (raw request/response payload).
 
-#### Payload Configuration:
+##### Payload Configuration:
 - `WithPayload<TRequest>(TRequest payload)` - Serializes payload object to JSON body.
 - `WithPayload<TRequest>(Func<TRequest> payloadAction)` - Serializes payload returned from factory function to JSON body.
 
-#### Execution:
+##### Execution:
 - `Execute<TResult>()` - Sends request and deserializes JSON response body to `TResult`.
 - `ExecuteAndTransform<TResponse, TResult>(Func<TResponse, TResult> transform)` - Deserializes response body to `TResponse` and maps to `TResult`.
 - `ExecuteWithoutResponse()` - Executes request where no response content is expected (e.g., `204 NoContent`).
 
-#### Examples:
+##### Examples:
 
-##### Using `Execute<TResult>` (Sends Request and Deserializes JSON Response):
+###### Using `Execute<TResult>` (Sends Request and Deserializes JSON Response):
 ```csharp
 MovementResponseDto result = await _restFactory.BuildRestStrategy()
     .WithCancellationToken(cancellationToken)
@@ -882,7 +889,7 @@ MovementResponseDto result = await _restFactory.BuildRestStrategy()
     .Execute<MovementResponseDto>();
 ```
 
-##### Using `ExecuteAndTransform` (Deserializes Intermediate Response and Maps to DTO):
+###### Using `ExecuteAndTransform` (Deserializes Intermediate Response and Maps to DTO):
 ```csharp
 MovementSummaryDto summary = await _restFactory.BuildRestStrategy()
     .WithCancellationToken(cancellationToken)
@@ -897,7 +904,7 @@ MovementSummaryDto summary = await _restFactory.BuildRestStrategy()
     });
 ```
 
-##### Using `ExecuteWithoutResponse` (For Void / No-Content Operations like DELETE):
+###### Using `ExecuteWithoutResponse` (For Void / No-Content Operations like DELETE):
 ```csharp
 await _restFactory.BuildRestStrategy()
     .WithCancellationToken(cancellationToken)
@@ -908,7 +915,7 @@ await _restFactory.BuildRestStrategy()
     .ExecuteWithoutResponse();
 ```
 
-### HTTP Client Exception Extensions (`HttpClientExceptionExtensions`)
+#### HTTP Client Exception Extensions (`HttpClientExceptionExtensions`)
 
 Extension methods extending `HttpClientException` (the abstract base class for `RestRequestException`, `RestResponseException`, `SoapRequestException`, and `SoapResponseException`):
 - `StatusCode()` - Extracts the `HttpStatusCode?` from the inner `HttpRequestException`.
@@ -928,11 +935,11 @@ Extension methods extending `HttpClientException` (the abstract base class for `
 
 ---
 
-## 4. Circuit Breaker Strategy (`ICircuitBreakerStrategyFactory<TService>`)
+### 4. Circuit Breaker Strategy (`ICircuitBreakerStrategyFactory<TService>`)
 
 The Circuit Breaker strategy builder and factory provide resilience protection for external calls (REST, SOAP, databases, message queues, third-party integrations) using Polly v8 resilience pipelines.
 
-### Registering and Injecting Circuit Breaker Strategy Factory
+#### Registering and Injecting Circuit Breaker Strategy Factory
 
 Register the factory via `IServiceCollection`:
 ```csharp
@@ -964,13 +971,13 @@ public class ExternalLivestockService
 }
 ```
 
-### Shared Circuit Breaker State & `WithDefaultCircuitKey`
+#### Shared Circuit Breaker State & `WithDefaultCircuitKey`
 
 Circuit breaker resilience pipelines are managed through a singleton `ResiliencePipelineRegistry<string>` registered in DI, allowing circuit health and failure states to be **shared across requests and threads**.
 
 > **Important**: Setting `WithDefaultCircuitKey(circuitKey)` on the factory assigns that key to all strategies produced by `BuildCircuitBreakerStrategy()`. This puts all subsequent operations created by that factory on the **exact same circuit breaker**. If the circuit trips due to failures in one operation or request, all other operations sharing that circuit key will immediately fast-fail (or execute their configured fallback) without hitting downstream dependencies.
 
-### Factory Defaults for Circuit Breaker Strategies (`ICircuitBreakerStrategyFactory<TService>`)
+#### Factory Defaults for Circuit Breaker Strategies (`ICircuitBreakerStrategyFactory<TService>`)
 
 The factory exposes the following methods to establish default options inherited by all created strategy instances:
 - `WithDefaultCircuitKey(string circuitKey)` - Sets default circuit key identifier.
@@ -991,7 +998,7 @@ The factory exposes the following methods to establish default options inherited
 - `WithDefaultOnHalfOpen(Action onHalfOpenAction)` - Sets default callback when circuit enters half-open state.
 - `BuildCircuitBreakerStrategy()` - Creates an `ICircuitBreakerStrategy<TService>` instance pre-populated with factory defaults.
 
-### Minimum and Allowed Parameter Values
+#### Minimum and Allowed Parameter Values
 
 When providing values to either the factory defaults or strategy builder methods, the following constraints apply:
 - **`ConsecutiveFailureThreshold`**: Minimum value is `1` failure (`ArgumentOutOfRangeException` thrown if `< 1`).
@@ -1002,11 +1009,11 @@ When providing values to either the factory defaults or strategy builder methods
 - **Threshold Requirement**: At least one threshold must be configured (`WithConsecutiveFailureThreshold`, `WithFailureRatio`, or both). If neither is configured, `InvalidOperationException` is thrown upon execution.
 - **Circuit Key & CancellationToken Requirement**: Both `CircuitKey` (non-empty string) and `CancellationToken` are mandatory for execution; omitting either throws `InvalidOperationException`.
 
-### Circuit Breaker Strategy Fluent Methods (`ICircuitBreakerStrategy<TService>`)
+#### Circuit Breaker Strategy Fluent Methods (`ICircuitBreakerStrategy<TService>`)
 
 Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 
-#### Configuration:
+##### Configuration:
 - `WithCircuitKey(string circuitKey)` - Identifies the shared circuit breaker across operations. Also sets `TargetDescription` to `$"circuit-breaker-{circuitKey}"` and sets `ActionDescription` to `"Circuit Breaker Scoped Action"` if an action description has not already been provided.
 - `WithConsecutiveFailureThreshold(int consecutiveFailureThreshold)` - Sets consecutive failure threshold (min `1`).
 - `WithFailureRatio(double failureRatio)` - Sets failure ratio threshold (min `0.001`, max `1.0`).
@@ -1022,13 +1029,13 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 - `WithExcludedException(Func<Exception, CancellationToken, bool> predicate)` - Specifies a predicate evaluated with the active cancellation token for exceptions explicitly excluded from contributing to failures.
 - `WithHandledResult<TResult>(Func<TResult, bool> predicate)` - Specifies a predicate treating returned result models as failures.
 
-#### Protected Actions & Fallbacks:
+##### Protected Actions & Fallbacks:
 - `WithAction(Func<CancellationToken, Task> action)` - Configures a void / `Task` async action to protect.
 - `WithAction<TResult>(Func<CancellationToken, Task<TResult>> action)` - Configures a result-returning (`Task<TResult>`) async action to protect.
 - `WithFallback(Func<CancellationToken, Task> fallbackAction)` - Configures a fallback action for void / `Task` operations.
 - `WithFallback<TResult>(Func<CancellationToken, Task<TResult>> fallbackAction)` - Configures a fallback action for `Task<TResult>` operations.
 
-#### Exception Handling & Rethrow Semantics:
+##### Exception Handling & Rethrow Semantics:
 - **Default Handled Exceptions**: If no `WithHandledException` or policy is configured, **all exceptions are handled by default** (`HandledExceptions.Count == 0`), with the exception of default excluded exceptions and caller cancellation.
 - **Default Excluded Exceptions**: The following exceptions are excluded by default and will **never trip the circuit breaker** or execute fallbacks:
   - `StrategyPreConditionException` (and all derived exceptions: `BusinessRuleException`, `ConflictRuleException`, `EntityNotFoundException`, `ExistenceRuleException`, `ReferenceRuleException`, `RequestValidationException`, `SoapSchemaBuilderException`)
@@ -1041,13 +1048,13 @@ Created via `_circuitBreakerFactory.BuildCircuitBreakerStrategy()`.
 - **Fallback Invocation**: When a fallback is provided, handled exceptions and open circuit rejections will invoke the fallback delegate and return its result rather than throwing.
 - **Circuit Breaker Open Exception (`CircuitBreakerOpenException`)**: When the circuit is `Open` and no fallback is configured, attempting execution fast-fails and throws `CircuitBreakerOpenException` with message `$"Circuit breaker '{CircuitKey}' is open. Requests are temporarily blocked."`, wrapping Polly's inner `BrokenCircuitException`.
 
-#### Lifecycle Callbacks (`On...` Methods):
+##### Lifecycle Callbacks (`On...` Methods):
 The `On...` methods are **optional** lifecycle hooks for observability, metric emission, or alerting:
 - **`OnBreak(Action<Exception, TimeSpan> onBreakAction)`**: Invoked when the circuit trips from Closed or Half-Open to **Open**. Passes the triggering `Exception` and the `TimeSpan` break duration.
 - **`OnReset(Action onResetAction)`**: Invoked when the circuit successfully recovers and resets to **Closed** (healthy). Normal traffic resumes.
 - **`OnHalfOpen(Action onHalfOpenAction)`**: Invoked when the break duration expires and the circuit transitions to **Half-Open**. In this state, Polly allows a single trial probe call through to test downstream health while blocking concurrent requests.
 
-#### Multi-Circuit / Multi-Breaker Approach:
+##### Multi-Circuit / Multi-Breaker Approach:
 The builder supports combining **both** `WithConsecutiveFailureThreshold` and `WithFailureRatio` on the exact same strategy / circuit key:
 - When both thresholds are configured, the pipeline builds a **composite multi-circuit resilience pipeline** containing two distinct, independent circuit breakers:
   - `{circuitKey}:consecutive` (consecutive failure count breaker)
@@ -1058,11 +1065,11 @@ The builder supports combining **both** `WithConsecutiveFailureThreshold` and `W
   - Trips if background error rate exceeds the configured ratio within the sampling duration (e.g. 40% failures across 50 requests over 60 seconds).
 - **Blocking & Protection**: As soon as either breaker is Open, execution is blocked and diverted to the fallback delegate (or throws `CircuitBreakerOpenException`), protecting the downstream service from overload.
 
-#### Execution Methods:
+##### Execution Methods:
 - `Execute()` - Executes a void / `Task` action within the circuit breaker.
 - `Execute<TResult>()` - Executes a result-returning `Task<TResult>` action within the circuit breaker.
 
-### Understanding Circuit Breaker Evaluation: Consecutive Failures vs. Failure Ratio
+#### Understanding Circuit Breaker Evaluation: Consecutive Failures vs. Failure Ratio
 
 The Circuit Breaker strategy supports two distinct resilience mechanisms that can be used individually or combined into a composite multi-breaker.
 
@@ -1093,13 +1100,13 @@ The Circuit Breaker strategy supports two distinct resilience mechanisms that ca
                                                                            [TRIP OPEN]  [Stay Closed]
 ```
 
-#### 1. Consecutive Failure Breaker (`WithConsecutiveFailureThreshold`)
+##### 1. Consecutive Failure Breaker (`WithConsecutiveFailureThreshold`)
 
 - **Purpose:** Protects against immediate, total downstream failures (e.g. network partition, crashed container, hard 500 error).
 - **Evaluation:** Counts purely sequential failures. Any successful execution immediately resets the consecutive failure counter back to `0`.
 - **Sliding Window:** Does **not** use `SamplingDuration` or `MinimumThroughput`. It solely tracks the streak of failures in a row.
 
-##### Scenario Example (`ConsecutiveFailureThreshold = 3`):
+###### Scenario Example (`ConsecutiveFailureThreshold = 3`):
 
 | Call # | Result | Consecutive Failures | Breaker State | Explanation |
 | :--- | :--- | :--- | :--- | :--- |
@@ -1110,14 +1117,14 @@ The Circuit Breaker strategy supports two distinct resilience mechanisms that ca
 | **5** | ❌ Fail | 2 | **Closed** | 2 of 3 failures reached |
 | **6** | ❌ Fail | 3 | **OPEN** 🚨 | Hit 3 consecutive failures; circuit opens |
 
-#### 2. Failure Ratio Breaker (`WithFailureRatio`, `WithSamplingDuration`, `WithMinimumThroughput`)
+##### 2. Failure Ratio Breaker (`WithFailureRatio`, `WithSamplingDuration`, `WithMinimumThroughput`)
 
 - **Purpose:** Protects against high error rates or degraded service health, even when errors are interleaved with successes (e.g. 40% of database queries timing out under heavy load).
 - **Rolling Sampling Window (`SamplingDuration`):** Tracks all executions over a trailing, rolling time window (defaults to `30,000` ms / 30s). Executions older than 30 seconds age out and drop from the calculation.
 - **Minimum Throughput Gatekeeper (`MinimumThroughput`):** The minimum number of requests (successes + failures) that **must** occur within the rolling window before the failure ratio is evaluated. If throughput is below this number, the ratio breaker will **never trip**, preventing low-volume noise from opening the circuit.
 - **Failure Ratio Threshold (`FailureRatio`):** The proportion of failures to total requests required to trip the circuit (e.g. `0.5` = 50%, `0.25` = 25%, `1.0` = 100%).
 
-##### Scenario A: Low Volume / Below Minimum Throughput (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
+###### Scenario A: Low Volume / Below Minimum Throughput (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
 
 | Call # | Result | Calls in Window | Failures in Window | Failure % | Breaker State | Explanation |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -1127,7 +1134,7 @@ The Circuit Breaker strategy supports two distinct resilience mechanisms that ca
 
 *Note: The ratio breaker stays closed because the total throughput in the window (3) is below `MinimumThroughput` (10).*
 
-##### Scenario B: Normal Volume Exceeding Failure Ratio (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
+###### Scenario B: Normal Volume Exceeding Failure Ratio (`MinimumThroughput = 10`, `FailureRatio = 0.5` in 30s window)
 
 | Call # | Result | Calls in Window | Failures in Window | Failure % | Breaker State | Explanation |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -1135,16 +1142,16 @@ The Circuit Breaker strategy supports two distinct resilience mechanisms that ca
 | **9** | ✅ Success | 9 | 4 | 44.4% | **Closed** | Throughput (9) < 10 |
 | **10** | ❌ Fail | 10 | 5 | **50%** | **OPEN** 🚨 | Throughput reached (10) and failure ratio ≥ 50% (5/10) |
 
-##### Scenario C: Rolling Recovery (Failures Aging Out)
+###### Scenario C: Rolling Recovery (Failures Aging Out)
 If no further calls are made for 30 seconds, all 10 calls drop out of the sliding window, resetting both throughput and failure counts to zero.
 
-#### 3. Composite Multi-Breaker & Common Configuration Pitfalls
+##### 3. Composite Multi-Breaker & Common Configuration Pitfalls
 
 When both `WithConsecutiveFailureThreshold` and `WithFailureRatio` are supplied:
 - Polly registers two independent circuit breakers (`{key}:consecutive` and `{key}:ratio`).
 - If **either** breaker trips, requests are blocked.
 
-##### ⚠️ Common Pitfall: Setting `MinimumThroughput` Too Low
+###### ⚠️ Common Pitfall: Setting `MinimumThroughput` Too Low
 If you configure:
 ```json
 {
@@ -1159,21 +1166,21 @@ If you configure:
   - But the **ratio breaker** sees 2 requests out of 2 failed ($2/2 = 100\% \ge 50\%$) and throughput ($2 \ge 2$) is met.
   - **Result:** The ratio breaker trips on the 2nd failure, making your consecutive failure threshold of 5 ineffective!
 
-##### ✅ Recommended Best Practice:
+###### ✅ Recommended Best Practice:
 1. **Consecutive-Only Resilience:** If you only care about $N$ failures in a row, omit `FailureRatio`.
 2. **Composite Resilience:** When using both, set `MinimumThroughput` to a representative traffic volume (e.g. `10` or higher) so small bursts of 2–4 errors are handled by the consecutive threshold while larger error rates over time are caught by the ratio threshold.
 
 ---
 
-## 5. Circuit Breaker Policies (`ICircuitBreakerPolicy`, `CircuitBreakerHttpPolicy`, `ICircuitBreakerPolicyFactory`)
+### 5. Circuit Breaker Policies (`ICircuitBreakerPolicy`, `CircuitBreakerHttpPolicy`, `ICircuitBreakerPolicyFactory`)
 
 Circuit breaker policies encapsulate reusable sets of handled exceptions, excluded exceptions, and result predicates to enforce consistent failure criteria across applications.
 
-### `CircuitBreakerHttpPolicy`
+#### `CircuitBreakerHttpPolicy`
 
 `CircuitBreakerHttpPolicy` provides standard, battle-tested resilience rules tailored for HTTP, REST, and SOAP communications:
 
-#### Handled Failure Conditions:
+##### Handled Failure Conditions:
 1. **HTTP Client Exceptions (`HttpClientException`)**:
    `HttpClientException` is the common abstract base exception for all strategy HTTP clients. By pattern matching `ex is HttpClientException`, the policy automatically brings all derived exceptions into scope:
    - `RestRequestException` (REST client request/transport failures)
@@ -1193,24 +1200,24 @@ Circuit breaker policies encapsulate reusable sets of handled exceptions, exclud
 2. **Polly Timeout Rejections**:
    - `TimeoutRejectedException` (Polly timeout pipeline rejections).
 
-#### Excluded Exceptions:
+##### Excluded Exceptions:
 - **`XmlSchemaValidationException`**: Schema validation errors are client-side payload validation issues and are explicitly excluded so they never contribute to circuit breaker failure counters or trip the circuit.
 - **Caller Cancellation**: If `TaskCanceledException` or `OperationCanceledException` occurs because the caller's cancellation token was cancelled (`ct.IsCancellationRequested == true`), it is automatically excluded by both the policy condition and the strategy pipeline, and will not count as a failure or trip the circuit breaker.
 
 ---
 
-### `CircuitBreakerPolicyFactory` (`ICircuitBreakerPolicyFactory`)
+#### `CircuitBreakerPolicyFactory` (`ICircuitBreakerPolicyFactory`)
 
 The policy factory provides a clean mechanism to create pre-configured policies:
 
-#### DI Registration:
+##### DI Registration:
 ```csharp
 services.AddCircuitBreakerPolicyFactory();
 // Or via the complete strategy framework:
 services.AddStrategyFramework();
 ```
 
-#### Usage with Strategy Factory:
+##### Usage with Strategy Factory:
 ```csharp
 public class LivestockApiClient
 {
@@ -1230,11 +1237,11 @@ public class LivestockApiClient
 
 ---
 
-### Creating Custom Circuit Breaker Policies (`ICircuitBreakerPolicy`)
+#### Creating Custom Circuit Breaker Policies (`ICircuitBreakerPolicy`)
 
 Custom policies allow encapsulating domain-specific failure rules, database error classifications, message queue retry/breaker rules, or third-party SDK exceptions into reusable, testable policy classes.
 
-#### Implementing `ICircuitBreakerPolicy`:
+##### Implementing `ICircuitBreakerPolicy`:
 ```csharp
 using System;
 using System.Data.Common;
@@ -1260,7 +1267,7 @@ public class DatabaseCircuitBreakerPolicy : ICircuitBreakerPolicy
 }
 ```
 
-#### Applying Custom Policies:
+##### Applying Custom Policies:
 ```csharp
 // Apply directly on a strategy instance:
 await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
@@ -1278,16 +1285,16 @@ _circuitBreakerFactory.WithDefaultPolicy(new DatabaseCircuitBreakerPolicy());
 
 ---
 
-### Circuit Breaker Exception Extensions (`ExceptionExtensions`)
+#### Circuit Breaker Exception Extensions (`ExceptionExtensions`)
 
 Extension methods extending `System.Exception` (defined under namespace `System` for direct availability without requiring additional `using` directives) for diagnosing circuit breaker exceptions:
 - `IsCircuitBreakerOpen()` - Traverses the exception and its `InnerException` hierarchy to determine if a `CircuitBreakerOpenException` is present at any level. Useful in catch blocks, middleware, error handlers, or filter pipelines where exceptions may be wrapped in higher-level exception types (e.g. `InvalidOperationException`, `AggregateException`, `RpcException`).
 
 ---
 
-### Circuit Breaker Examples
+#### Circuit Breaker Examples
 
-#### 1. Void / `Task` Operation with HTTP Policy & Fallback:
+##### 1. Void / `Task` Operation with HTTP Policy & Fallback:
 ```csharp
 await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
     .WithCancellationToken(cancellationToken)
@@ -1301,7 +1308,7 @@ await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
     .Execute();
 ```
 
-#### 2. Generic `Task<TResult>` Operation with Failure Ratio & Factory HTTP Policy:
+##### 2. Generic `Task<TResult>` Operation with Failure Ratio & Factory HTTP Policy:
 ```csharp
 // Strategy inherits WithDefaultPolicy(policyFactory.CreateHttpPolicy()) from factory
 AnimalDto animal = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
@@ -1317,7 +1324,7 @@ AnimalDto animal = await _circuitBreakerFactory.BuildCircuitBreakerStrategy()
     .Execute<AnimalDto>();
 ```
 
-#### 3. Multi-Breaker (Consecutive + Ratio-Based) without Fallback & Catching `CircuitBreakerOpenException`:
+##### 3. Multi-Breaker (Consecutive + Ratio-Based) without Fallback & Catching `CircuitBreakerOpenException`:
 ```csharp
 // Handled exceptions and open circuit rejections are rethrown to caller when WithFallback is omitted
 try
@@ -1351,3 +1358,102 @@ catch (RestRequestException ex)
     throw;
 }
 ```
+
+## Prerequisites
+
+- .NET 10 SDK (the project targets `net10.0`). SDK selection and the Microsoft Testing Platform runner are configured in [global.json](https://github.com/DEFRA/lis-sdk-nuget-api-strategies/blob/main/global.json).
+- To try a change in a consuming service: a local clone of [lis-dev](https://github.com/DEFRA/lis-dev), which runs a local NuGet server
+
+## Setup
+
+### Development
+
+```bash
+dotnet restore Strategies.slnx
+dotnet build Strategies.slnx
+```
+
+## Running in development
+
+This is a library, so it has no service of its own. To try a change in a consuming service before
+publishing, pack it and push it to the local NuGet server that lis-dev runs on port 5555
+(`nuget-server` in its compose stack, already listed in lis-dev's `nuget.config`):
+
+```bash
+dotnet pack src/Strategies/Strategies.csproj -c Release -o ./artifacts /p:Version=0.0.0-local.1
+dotnet nuget push "./artifacts/*.nupkg" --source http://localhost:5555/v3/index.json --api-key LOCAL-NUGET-API-KEY
+```
+
+Then reference that version from the consuming service.
+
+## Running tests
+
+Tests use xUnit v3 with Shouldly assertions, NSubstitute and Microsoft Testing Platform. Coverage includes the strategy factories and builders, repository strategies, REST and SOAP clients and serializers, SOAP schema building, circuit breaker strategies and policies, rule builders, exception extensions and dependency injection registration.
+
+Run the xUnit test executable directly after building:
+
+```bash
+dotnet build tests/Strategies.Tests/Strategies.Tests.csproj
+dotnet tests/Strategies.Tests/bin/Debug/net10.0/Defra.Livestock.Sdk.Api.Strategies.Tests.dll
+```
+
+## Pipelines
+
+GitHub Actions use the composite actions under `actions/` in `DEFRA/lis-github-actions`. Every workflow pins these actions to the `v0.11.0` release commit (`5f5557f64c1344efb6ed44e482452f9cfe6bea51`). Update all `uses:` references together when moving to a newer release.
+
+| Workflow | Trigger | Configured behaviour |
+|---|---|---|
+| [Prerelease](https://github.com/DEFRA/lis-sdk-nuget-api-strategies/blob/main/.github/workflows/prerelease.yml) | Push to `feature/**` or `hotfix/**` | Calculate a prerelease version, validate and run Sonar analysis, then tag the commit when validation succeeds and the quality gate passes |
+| [Pull Request Validation](https://github.com/DEFRA/lis-sdk-nuget-api-strategies/blob/main/.github/workflows/pull-request.yml) | Pull request opened, updated or reopened against `main` | Calculate a prospective version, validate and run Sonar analysis; aggregate the job results into a required check |
+| [Release](https://github.com/DEFRA/lis-sdk-nuget-api-strategies/blob/main/.github/workflows/release.yml) | Pull request merged into `main` | Calculate a stable version, validate and run Sonar analysis, then tag the merged commit when validation succeeds and the quality gate passes |
+| [Publish](https://github.com/DEFRA/lis-sdk-nuget-api-strategies/blob/main/.github/workflows/publish.yml) | Push of a tag matching `*.*.*` | Run the central composite NuGet publishing action in a local job |
+
+NuGet's trusted publishing policy must use repository owner `DEFRA`, repository `lis-sdk-nuget-api-strategies`, workflow filename `publish.yml`, and environment `release`. The `NUGET_USERNAME` secret identifies the policy creator. The publishing job stays in this repository because NuGet rejects authentication inside a reusable workflow hosted in another repository.
+
+Publishing requires an artifact built from the tagged commit by a successful prerelease or release workflow. The artifact records its commit, version, workflow run and attempt; publishing waits for that attempt to finish successfully before authenticating with NuGet.
+
+Dependabot branches receive patch versions. Their PR validation versions use the label `dependabot-alpha.<run>.<attempt>`; feature and hotfix prereleases require an LREG ticket.
+
+## Branching policy
+
+The repo uses mainline development. Branch from `main` and name the branch:
+
+- `feature/LREG-<ticket>-<short-kebab-description>`
+- `hotfix/LREG-<ticket>-<short-kebab-description>`
+
+`LREG` must be uppercase, because the GitHub ruleset rejects other branch names. Rebase onto `main`
+rather than merging `main` in.
+
+## Contributing to this project
+
+- Follow the [Defra software development standards](https://github.com/DEFRA/software-development-standards).
+- Code style is configured in `.editorconfig` and `stylecop.json`, with StyleCop and .NET analyzers enabled during builds. Warnings are treated as errors. Run `dotnet format Strategies.slnx --verify-no-changes` to check formatting locally.
+- Open a pull request against `main`. CI must pass and the Sonar quality gate must be green before merge.
+
+## Licence
+
+THIS INFORMATION IS LICENSED UNDER THE CONDITIONS OF THE OPEN GOVERNMENT LICENCE found at:
+
+<http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3>
+
+The following attribution statement MUST be cited in your products and applications when using this information.
+
+> Contains public sector information licensed under the Open Government licence v3
+
+### About the licence
+
+The Open Government Licence (OGL) was developed by the Controller of His Majesty's Stationery Office (HMSO) to enable information providers in the public sector to license the use and re-use of their information under a common open licence.
+
+It is designed to encourage use and re-use of information freely and flexibly, with only a few conditions.
+
+## Maintaining code analysis and public APIs
+
+The build runs the .NET 10 recommended analyzer rules, StyleCop and SonarAnalyzer. Tests also receive xUnit analyzers through `xunit.v3`. Analyzer warnings are treated as errors; CA1707 is disabled for test code to allow descriptive names with underscores.
+
+Some rules are suppressed in `src/Strategies/Directory.Build.props` because fixing them would break the existing public API: CA1720 (`RestSerializer` and `SoapSerializer` take a parameter named `object`) and RS0026 (the `When` overloads have optional parameters). CS1591 (missing XML documentation) is suppressed in both the library and the tests until the public members are documented. CA2201 is suppressed in the tests, which deliberately raise general exception types to exercise exception classification.
+
+The library uses `Microsoft.CodeAnalysis.PublicApiAnalyzers` to track its public surface, including nullability and default parameter values. These files make API changes visible during review and help catch accidental changes to the contract used by consuming services.
+
+Every merged PR to `main` enters the release pipeline, so there is no separate release preparation step. Update `src/Strategies/PublicAPI.Shipped.txt` in the same PR as the API change: it records the API contract that will be released on merge. Include both new types and their public members; for example, a new exception needs entries for both the type and its public constructor. The RS0016 code fix can generate declarations in `src/Strategies/PublicAPI.Unshipped.txt`; move those additions into the shipped file before merging.
+
+Keep `PublicAPI.Unshipped.txt` empty apart from `#nullable enable` unless it contains intentional `*REMOVED*` entries. Retain `#nullable enable` at the top of both files. Preserve previously shipped declarations as the compatibility record, and represent intentional removals using `*REMOVED*` entries in the unshipped file. Review breaking changes explicitly, since consuming services can still depend on earlier package versions.

@@ -1,4 +1,4 @@
-﻿// <copyright file="ReferenceRulesBuilder.logger.cs" company="Defra">
+// <copyright file="ReferenceRulesBuilder.logger.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -6,6 +6,9 @@ namespace Defra.Livestock.Sdk.Api.Strategies.Rules.Builders;
 
 using Microsoft.Extensions.Logging;
 
+/// <content>
+/// Logging operations for the reference rules builder.
+/// </content>
 public partial class ReferenceRulesBuilder<TService>
 {
     [LoggerMessage(LogLevel.Warning,

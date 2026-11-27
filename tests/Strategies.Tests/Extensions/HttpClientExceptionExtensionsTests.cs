@@ -1,4 +1,4 @@
-﻿// <copyright file="HttpClientExceptionExtensionsTests.cs" company="Defra">
+// <copyright file="HttpClientExceptionExtensionsTests.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -1066,7 +1066,7 @@ public class HttpClientExceptionExtensionsTests
         result.ShouldBeFalse();
     }
 
-    private static HttpClientException CreateExceptionWithStatusCode(HttpStatusCode? statusCode)
+    private static TestHttpClientRequestException CreateExceptionWithStatusCode(HttpStatusCode? statusCode)
     {
         if (statusCode.HasValue)
         {

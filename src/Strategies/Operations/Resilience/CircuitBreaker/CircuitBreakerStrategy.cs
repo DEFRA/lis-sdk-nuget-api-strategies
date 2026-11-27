@@ -1,4 +1,4 @@
-﻿// <copyright file="CircuitBreakerStrategy.cs" company="Defra">
+// <copyright file="CircuitBreakerStrategy.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 
@@ -385,10 +385,10 @@ public sealed partial class CircuitBreakerStrategy<TService>
             case Func<CancellationToken, Task<TResult>> typedAction:
                 return await typedAction(token);
             case Func<CancellationToken, Task<object?>> voidAction:
-            {
-                var voidRes = await voidAction(token);
-                return (TResult)voidRes!;
-            }
+                {
+                    var voidRes = await voidAction(token);
+                    return (TResult)voidRes!;
+                }
 
             default:
                 throw new InvalidOperationException(
@@ -414,10 +414,10 @@ public sealed partial class CircuitBreakerStrategy<TService>
             case Func<CancellationToken, Task<TResult>> typedFallback:
                 return await typedFallback(ct);
             case Func<CancellationToken, Task<object?>> voidFallback:
-            {
-                var voidRes = await voidFallback(ct);
-                return (TResult)voidRes!;
-            }
+                {
+                    var voidRes = await voidFallback(ct);
+                    return (TResult)voidRes!;
+                }
 
             default:
                 throw new InvalidOperationException(

@@ -1,4 +1,4 @@
-﻿// <copyright file="RestStrategyConstants.cs" company="Defra">
+// <copyright file="RestStrategyConstants.cs" company="Defra">
 // Copyright (c) Defra. All rights reserved.
 // </copyright>
 

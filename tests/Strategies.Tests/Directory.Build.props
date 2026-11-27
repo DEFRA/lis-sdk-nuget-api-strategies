@@ -1,9 +1,19 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
 
-  <!-- Packages-->
+  <!--
+    - CS1591: test classes and methods are not yet XML-documented.
+    - CA2201: tests deliberately raise general exception types to exercise exception classification.
+  -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CS1591;CA2201</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Defra.Livestock.Sdk.Api.Strategies.Abstractions" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+    <PackageReference Include="NSubstitute" />
   </ItemGroup>
 
   <!-- Schema files configuration -->
@@ -11,5 +21,4 @@
     <None Include="TestFramework\Data\Soap\Schemas\File*.xsd" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="TestFramework\Data\Soap\Schemas\Embedded*.xsd" />
   </ItemGroup>
-  
 </Project>
